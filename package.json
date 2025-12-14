@@ -1,0 +1,13 @@
+{
+    "name": "english-learning-platform-root",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "prebuild": "cd backend && npm install",
+        "build": "echo 'Backend ready'",
+        "start": "cd backend && npm start"
+    },
+    "engines": {
+        "node": "18.x"
+    }
+}
