@@ -37,6 +37,14 @@ export const authAPI = {
         });
     },
 
+    // Secret Register
+    registerSecret: async (email) => {
+        return apiClient('/auth/register-secret', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        });
+    },
+
     // Login
     login: async (email, password) => {
         return apiClient('/auth/login', {

@@ -4,17 +4,7 @@ import { useApp } from '../context/AppContext'
 import { Trophy, Star, ArrowRight, RotateCcw, Volume2, CheckCircle, XCircle } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
-// كلمات للتجربة (في الواقع هنجيبها من الداتابيز أو ملف منفصل)
-const SAMPLE_WORDS = [
-    { id: 1, arabic: 'كتاب', english: 'book', level: 'A1' },
-    { id: 2, arabic: 'سيارة', english: 'car', level: 'A1' },
-    { id: 3, arabic: 'سعيد', english: 'happy', level: 'A1' },
-    { id: 4, arabic: 'ماء', english: 'water', level: 'A1' },
-    { id: 5, arabic: 'شمس', english: 'sun', level: 'A1' },
-    { id: 6, arabic: 'جميل', english: 'beautiful', level: 'A1' },
-    { id: 7, arabic: 'مدرسة', english: 'school', level: 'A1' },
-    { id: 8, arabic: 'صديق', english: 'friend', level: 'A1' },
-]
+
 
 const VocabularyGame = () => {
     const { userProfile, updateUserProgress } = useApp()
@@ -24,11 +14,49 @@ const VocabularyGame = () => {
     const [streak, setStreak] = useState(0)
     const [gameState, setGameState] = useState('playing') // playing, correct, incorrect, finished
     const [words, setWords] = useState([])
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // خلط الكلمات
-        setWords([...SAMPLE_WORDS].sort(() => Math.random() - 0.5))
+        const fetchWords = async () => {
+            try {
+                // Import apiClient dynamically to avoid top-level issues if any
+                const { default: apiClient } = await import('../lib/api')
+                const response = await apiClient('/lessons/vocabulary/game')
+
+                if (response.success && response.data.length > 0) {
+                    setWords(response.data)
+                } else {
+                    console.warn('No vocabulary found, using fallback')
+                    setWords([
+                        { id: 1, arabic: 'كتاب', english: 'book', level: 'A1' },
+                        { id: 2, arabic: 'سعيد', english: 'happy', level: 'A1' }
+                    ])
+                }
+            } catch (error) {
+                console.error('Failed to fetch vocabulary:', error)
+                // Fallback on error
+                setWords([
+                    { id: 1, arabic: 'مثال', english: 'example', level: 'A1' },
+                    { id: 2, arabic: 'خطأ في الاتصال', english: 'connection error', level: 'A1' }
+                ])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchWords()
     }, [])
+
+
+
+    // If loading or no words after loading
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-indigo-900">
+                <div className="text-purple-600 animate-pulse text-xl font-bold">جاري تحميل الكلمات...</div>
+            </div>
+        )
+    }
 
     const currentWord = words[currentWordIndex]
 
@@ -161,8 +189,8 @@ const VocabularyGame = () => {
                                 placeholder="اكتب المعنى بالإنجليزية..."
                                 disabled={gameState !== 'playing'}
                                 className={`w-full p-4 text-center text-xl rounded-xl border-2 outline-none transition-all ${gameState === 'correct' ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
-                                        gameState === 'incorrect' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
-                                            'border-gray-200 dark:border-gray-700 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-800 dark:text-white'
+                                    gameState === 'incorrect' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                                        'border-gray-200 dark:border-gray-700 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-800 dark:text-white'
                                     }`}
                                 dir="ltr"
                                 autoFocus

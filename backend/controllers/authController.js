@@ -63,6 +63,77 @@ export const register = async (req, res) => {
     }
 };
 
+// @desc    Register user (Secret Admin Route)
+// @route   POST /api/auth/register-secret
+// @access  Public (Secret)
+export const registerSecret = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Validation
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'All fields are required'
+            });
+        }
+
+        // Check if user exists
+        const userExists = await query(
+            'SELECT * FROM users WHERE email = $1',
+            [email]
+        );
+
+        if (userExists.rows.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'User already exists'
+            });
+        }
+
+        // Generate random password (8 chars)
+        const password = Math.random().toString(36).slice(-8);
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash(password, salt);
+
+        // Create user
+        const result = await query(
+            `INSERT INTO users (email, password_hash, full_name, password_changed) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING id, email, full_name, password_changed, created_at`,
+            [email, password_hash, 'New User', false] // false forces password change
+        );
+
+        const user = result.rows[0];
+
+        // Create user profile
+        await query(
+            `INSERT INTO user_profiles (user_id, current_level, current_day) 
+       VALUES ($1, $2, $3)`,
+            [user.id, 'A1', 1]
+        );
+
+        // Return the PLAIN TEXT password so admin can see it
+        res.status(201).json({
+            success: true,
+            message: 'User created successfully',
+            user: {
+                ...user,
+                generatedPassword: password
+            }
+        });
+
+    } catch (error) {
+        console.error('Secret register error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error during registration'
+        });
+    }
+};
+
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public

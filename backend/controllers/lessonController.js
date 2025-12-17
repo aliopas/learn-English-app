@@ -24,14 +24,14 @@ export const getLessonByDay = async (req, res) => {
                 [lesson.id]
             );
             exercises = exercisesResult.rows;
-
-            // 3. Get Vocabulary for this lesson
-            const vocabResult = await query(
-                'SELECT * FROM vocabulary WHERE lesson_id = $1',
-                [lesson.id]
-            );
-            lesson.vocabulary = vocabResult.rows;
         }
+
+        // 3. Get Vocabulary for this day (by day_number)
+        const vocabResult = await query(
+            'SELECT * FROM vocabulary WHERE day_number = $1',
+            [dayNumber]
+        );
+        const vocabularyData = vocabResult.rows.length > 0 ? vocabResult.rows[0] : null;
 
         // 3. Get User Progress for this lesson
         const progressResult = await query(
@@ -57,6 +57,7 @@ export const getLessonByDay = async (req, res) => {
                 description: lesson.description,
                 videoUrl: lesson.video_url,
                 imageUrl: lesson.image_url,
+                documentContent: lesson.document_content, // New field for Google Docs link
                 estimatedTime: '30 دقيقة', // Default value as it's not in DB
                 grammar: {
                     topic: lesson.grammar_topic,
@@ -65,7 +66,8 @@ export const getLessonByDay = async (req, res) => {
                 readingExercise: {
                     text: lesson.reading_text
                 },
-                vocabulary: lesson.vocabulary || [], // From previous edit
+                vocabulary: [], // Keep empty for backward compatibility
+                vocabularyData: vocabularyData, // Single row with 10 words for this day
                 exercises: exercises.map(ex => ({
                     ...ex,
                     correctAnswer: ex.correct_answer // CamelCase for frontend
@@ -78,7 +80,8 @@ export const getLessonByDay = async (req, res) => {
         console.error('Get lesson error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error'
+            message: 'Server error: ' + error.message, // Return specific error to frontend
+            error: error.message
         });
     }
 };
@@ -105,7 +108,7 @@ export const completeLesson = async (req, res) => {
             console.log(`⚠️ Lesson Day ${dayNumber} content missing in DB. Using placeholder ID.`);
             lessonId = `day-${dayNumber}-placeholder`;
         } else {
-            lessonId = lessonResult.rows[0].id;
+            lessonId = String(lessonResult.rows[0].id);
         }
 
         // 2. Insert or Update Progress
@@ -113,7 +116,7 @@ export const completeLesson = async (req, res) => {
             `INSERT INTO lesson_progress 
        (user_id, day_number, lesson_id, completed, score, time_spent_minutes, completed_at, updated_at)
        VALUES ($1, $2, $3, true, $4, $5, NOW(), NOW())
-       ON CONFLICT (user_id, day_number, lesson_id) 
+       ON CONFLICT (user_id, day_number) 
        DO UPDATE SET 
          completed = true,
          score = GREATEST(lesson_progress.score, EXCLUDED.score),
@@ -196,7 +199,7 @@ export const saveLessonProgress = async (req, res) => {
         if (lessonResult.rows.length === 0) {
             lessonId = `day-${dayNumber}-placeholder`;
         } else {
-            lessonId = lessonResult.rows[0].id;
+            lessonId = String(lessonResult.rows[0].id);
         }
 
         // 2. Upsert progress with saved_answers
@@ -204,7 +207,7 @@ export const saveLessonProgress = async (req, res) => {
             `INSERT INTO lesson_progress 
        (user_id, day_number, lesson_id, saved_answers, updated_at)
        VALUES ($1, $2, $3, $4, NOW())
-       ON CONFLICT (user_id, day_number, lesson_id) 
+       ON CONFLICT (user_id, day_number) 
        DO UPDATE SET 
          saved_answers = $4,
          updated_at = NOW()`,
@@ -218,3 +221,89 @@ export const saveLessonProgress = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
+
+// @desc    Get vocabulary for game based on user's current day
+// @route   GET /api/lessons/vocabulary/game
+// @access  Private
+export const getGameVocabulary = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // 1. Get User's Current Day from Profile
+        const profileResult = await query(
+            'SELECT current_day FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+
+        if (profileResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Profile not found' });
+        }
+
+        const currentDay = profileResult.rows[0].current_day;
+
+        // 2. Fetch Vocabulary for THIS specific day
+        const result = await query(
+            'SELECT * FROM vocabulary WHERE day_number = $1',
+            [currentDay]
+        );
+
+        const allWords = [];
+        let idCounter = 1;
+
+        if (result.rows.length > 0) {
+            const row = result.rows[0];
+
+            // Include main word
+            if (row.word && row.translation) {
+                allWords.push({
+                    id: idCounter++,
+                    english: row.word,
+                    arabic: row.translation,
+                    level: 'A1'
+                });
+            }
+
+            // Include words 1-9
+            for (let i = 1; i <= 9; i++) {
+                const w = row[`word${i}`];
+                const t = row[`translation${i}`];
+                if (w && t) {
+                    allWords.push({
+                        id: idCounter++,
+                        english: w,
+                        arabic: t,
+                        level: 'A1'
+                    });
+                }
+            }
+        } else {
+            // Fallback if no vocab found for current day
+            console.log(`⚠️ No vocabulary found for Day ${currentDay}, fetching random fallback.`);
+            const fallbackResult = await query('SELECT * FROM vocabulary ORDER BY RANDOM() LIMIT 1');
+            if (fallbackResult.rows.length > 0) {
+                const row = fallbackResult.rows[0];
+                if (row.word) allWords.push({ id: 1, english: row.word, arabic: row.translation, level: 'A1' });
+                if (row.word1) allWords.push({ id: 2, english: row.word1, arabic: row.translation1, level: 'A1' });
+                if (row.word2) allWords.push({ id: 3, english: row.word2, arabic: row.translation2, level: 'A1' });
+            }
+        }
+
+        // Shuffle
+        const shuffledWords = allWords.sort(() => Math.random() - 0.5);
+
+        res.status(200).json({
+            success: true,
+            data: shuffledWords,
+            day: currentDay
+        });
+
+    } catch (error) {
+        console.error('Get game vocabulary error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error fetching vocabulary'
+        });
+    }
+};
+
+

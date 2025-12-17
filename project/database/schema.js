@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, boolean, timestamp, jsonb, index, serial } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, boolean, timestamp, jsonb, index, serial, unique } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ============================================
@@ -59,6 +59,7 @@ export const lessonProgress = pgTable('lesson_progress', {
 }, (table) => ({
     userDayIdx: index('idx_lesson_progress_user_day').on(table.userId, table.dayNumber),
     completedIdx: index('idx_lesson_progress_completed').on(table.userId, table.completed),
+    userDayUnique: unique('lesson_progress_user_day_unique').on(table.userId, table.dayNumber),
 }));
 
 // ============================================
@@ -139,7 +140,7 @@ export const lessons = pgTable('lessons', {
     title: text('title').notNull(),
     description: text('description'),
     grammarTopic: text('grammar_topic'),
-    grammarContent: text('grammar_content'),
+    documentContent: text('document_content'),
     readingText: text('reading_text'),
     videoUrl: text('video_url'),
     imageUrl: text('image_url'),
@@ -151,18 +152,65 @@ export const lessons = pgTable('lessons', {
 }));
 
 // ============================================
-// 9. VOCABULARY CONTENT TABLE
+// 9. VOCABULARY CONTENT TABLE (10 words per day)
 // ============================================
 export const vocabulary = pgTable('vocabulary', {
     id: serial('id').primaryKey(),
-    lessonId: integer('lesson_id').references(() => lessons.id, { onDelete: 'cascade' }).notNull(),
+    dayNumber: integer('day_number').notNull().unique(), // Direct link to day (1-30)
+
+    // Word 1
     word: text('word').notNull(),
     translation: text('translation').notNull(),
     example: text('example'),
-    category: text('category'), // greetings, numbers, etc.
+
+    // Word 2
+    word1: text('word1'),
+    translation1: text('translation1'),
+    example1: text('example1'),
+
+    // Word 3
+    word2: text('word2'),
+    translation2: text('translation2'),
+    example2: text('example2'),
+
+    // Word 4
+    word3: text('word3'),
+    translation3: text('translation3'),
+    example3: text('example3'),
+
+    // Word 5
+    word4: text('word4'),
+    translation4: text('translation4'),
+    example4: text('example4'),
+
+    // Word 6
+    word5: text('word5'),
+    translation5: text('translation5'),
+    example5: text('example5'),
+
+    // Word 7
+    word6: text('word6'),
+    translation6: text('translation6'),
+    example6: text('example6'),
+
+    // Word 8
+    word7: text('word7'),
+    translation7: text('translation7'),
+    example7: text('example7'),
+
+    // Word 9
+    word8: text('word8'),
+    translation8: text('translation8'),
+    example8: text('example8'),
+
+    // Word 10
+    word9: text('word9'),
+    translation9: text('translation9'),
+    example9: text('example9'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
-    lessonIdIdx: index('idx_vocabulary_lesson_id').on(table.lessonId),
+    dayNumberIdx: index('idx_vocabulary_day_number').on(table.dayNumber),
 }));
 
 // ============================================

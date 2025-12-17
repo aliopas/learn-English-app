@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../context/AppContext'
 import { lessonAPI } from '../lib/api'
-import { Play, BookOpen, CheckCircle, ArrowRight, Clock, Target, Award, XCircle, AlertCircle, BookOpenText, Image as ImageIcon } from 'lucide-react'
+import { Play, BookOpen, CheckCircle, ArrowRight, Clock, Target, Award, XCircle, AlertCircle, BookOpenText, Image as ImageIcon, Volume2, Square } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import confetti from 'canvas-confetti'
 
@@ -13,12 +13,48 @@ const LessonView = () => {
   const [activeTab, setActiveTab] = useState('video')
   const [apiLessonData, setApiLessonData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [isReading, setIsReading] = useState(false) // State for reading text status
 
   const speakWord = (text) => {
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'en-US'
-    window.speechSynthesis.speak(utterance)
-  }
+    window.speechSynthesis.cancel(); // Stop any previous speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.8; // Slightly slower for clarity
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleSpeakText = (text) => {
+    if (isReading) {
+      window.speechSynthesis.cancel();
+      setIsReading(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+
+    utterance.onend = () => {
+      setIsReading(false);
+    };
+
+    setIsReading(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Stop speech when changing tabs or unmounting
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    window.speechSynthesis.cancel();
+    setIsReading(false);
+  }, [activeTab]);
 
   // Quiz State
   const [userAnswers, setUserAnswers] = useState({}) // { exerciseId: selectedOption }
@@ -144,10 +180,35 @@ const LessonView = () => {
   // 1. Get local rich content
   const localLesson = learningPath.find(l => l.day === parseInt(dayId))
 
-  // 2. Merge with API data - Prioritize API data if available (has title)
-  const lesson = (apiLessonData && apiLessonData.title)
-    ? apiLessonData
-    : (localLesson ? { ...localLesson, ...apiLessonData } : null);
+  // 2. Build lesson object with Priority & Source Tracking
+  const isApiSource = apiLessonData && apiLessonData.title && !error;
+  const lesson = isApiSource
+    ? {
+      ...apiLessonData,
+      source: 'api',
+      estimatedTime: apiLessonData.estimatedTime || localLesson?.estimatedTime || '30 دقيقة',
+      skillFocus: localLesson?.skillFocus,
+      vocabulary: apiLessonData.vocabulary || [],
+      vocabularyData: apiLessonData.vocabularyData,
+      documentContent: apiLessonData.documentContent,
+    }
+    : (localLesson ? { ...localLesson, source: 'local' } : null);
+
+  // Prepare Vocab List (Handles both DB and Local structures)
+  const displayVocab = lesson?.vocabularyData
+    ? [
+      { word: lesson.vocabularyData.word, translation: lesson.vocabularyData.translation, example: lesson.vocabularyData.example },
+      { word: lesson.vocabularyData.word1, translation: lesson.vocabularyData.translation1, example: lesson.vocabularyData.example1 },
+      { word: lesson.vocabularyData.word2, translation: lesson.vocabularyData.translation2, example: lesson.vocabularyData.example2 },
+      { word: lesson.vocabularyData.word3, translation: lesson.vocabularyData.translation3, example: lesson.vocabularyData.example3 },
+      { word: lesson.vocabularyData.word4, translation: lesson.vocabularyData.translation4, example: lesson.vocabularyData.example4 },
+      { word: lesson.vocabularyData.word5, translation: lesson.vocabularyData.translation5, example: lesson.vocabularyData.example5 },
+      { word: lesson.vocabularyData.word6, translation: lesson.vocabularyData.translation6, example: lesson.vocabularyData.example6 },
+      { word: lesson.vocabularyData.word7, translation: lesson.vocabularyData.translation7, example: lesson.vocabularyData.example7 },
+      { word: lesson.vocabularyData.word8, translation: lesson.vocabularyData.translation8, example: lesson.vocabularyData.example8 },
+      { word: lesson.vocabularyData.word9, translation: lesson.vocabularyData.translation9, example: lesson.vocabularyData.example9 },
+    ].filter(v => v.word)
+    : (lesson?.vocabulary || []);
 
   // Helper for localStorage key
   const getStorageKey = () => user ? `lesson_progress_${user.id}_${dayId}` : null;
@@ -201,6 +262,7 @@ const LessonView = () => {
         setUserAnswers(initialAnswers);
       } catch (error) {
         console.error("Error fetching lesson:", error);
+        setError(error.message || "Failed to load from database");
       } finally {
         setIsLoading(false);
       }
@@ -339,6 +401,17 @@ const LessonView = () => {
       </AnimatePresence>
 
       <div className="max-w-6xl mx-auto w-full">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-right" dir="rtl" role="alert">
+            <strong className="font-bold">خطأ في تحميل البيانات من قاعدة البيانات: </strong>
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+        {lesson?.source && (
+          <div className={`mb-4 px-3 py-1 text-xs font-mono inline-block rounded ${lesson.source === 'api' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+            Source: {lesson.source === 'api' ? 'Database' : 'Local File'}
+          </div>
+        )}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -447,14 +520,19 @@ const LessonView = () => {
 
           {activeTab === 'vocabulary' && (
             <div>
+              {/* Vocabulary Grid */}
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">
-                  الكلمات الجديدة
-                </h2>
-                <span className="text-xs md:text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full">{lesson.vocabulary.length} كلمات</span>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">الكلمات الجديدة</h2>
+                <span className="text-xs md:text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full">{displayVocab.length} كلمات</span>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                {lesson.vocabulary.map((vocab, index) => (
+                {displayVocab.length === 0 && (
+                  <div className="col-span-full text-center text-gray-500 py-8">
+                    لا توجد كلمات متاحة لهذا الدرس
+                  </div>
+                )}
+                {displayVocab.map((vocab, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: -20 }}
@@ -490,12 +568,44 @@ const LessonView = () => {
           {activeTab === 'grammar' && (
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white mb-6">
-                شرح القواعد: {lesson.grammar.topic}
+                شرح القواعد{lesson.grammar?.topic ? `: ${lesson.grammar.topic}` : ''}
               </h2>
               <div className="prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl mb-8 border border-gray-100 dark:border-gray-700">
-                <p className="text-base md:text-lg leading-relaxed text-gray-700 dark:text-gray-300" dir="ltr">
-                  {lesson.grammar.description}
-                </p>
+                {(() => {
+                  const docUrl = lesson.documentContent;
+                  const getEmbedUrl = (url) => {
+                    if (!url || !url.startsWith('http')) return null;
+                    try {
+                      const urlObj = new URL(url);
+                      if (urlObj.hostname.includes('docs.google.com')) {
+                        return url.replace(/\/edit.*$/, '/preview').replace(/\/view.*$/, '/preview');
+                      }
+                      return url;
+                    } catch (e) { return null; }
+                  };
+
+                  const embedUrl = getEmbedUrl(docUrl);
+
+                  if (embedUrl) {
+                    return (
+                      <div className="mt-4 w-full">
+                        <iframe
+                          src={embedUrl}
+                          className="w-full h-[600px] rounded-xl border border-gray-200 dark:border-gray-700"
+                          title="Grammar Document"
+                          loading="lazy"
+                          allow="autoplay"
+                        />
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <p className="text-base md:text-lg leading-relaxed text-gray-700 dark:text-gray-300" dir="ltr">
+                      {lesson.grammar?.description || 'لا يتوفر محتوى للقواعد'}
+                    </p>
+                  );
+                })()}
               </div>
               <button
                 onClick={() => handleCompleteSection('grammar')}
@@ -512,9 +622,18 @@ const LessonView = () => {
           {activeTab === 'reading' && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">
-                  النص القرائي
-                </h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">
+                    النص القرائي
+                  </h2>
+                  <button
+                    onClick={() => handleSpeakText(lesson.readingExercise?.text || lesson.readingExercise || '')}
+                    className="p-2 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors"
+                    title={isReading ? "إيقاف القراءة" : "استمع للنص"}
+                  >
+                    {isReading ? <Square size={20} fill="currentColor" /> : <Volume2 size={24} />}
+                  </button>
+                </div>
                 <span className="text-xs md:text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
                   ممارسة القراءة
                 </span>

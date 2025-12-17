@@ -34,7 +34,7 @@ async function seed() {
 
         // 1. Clear existing content data to avoid duplicates
         console.log('🧹 Clearing existing lessons, vocabulary, and exercises...');
-        await client.query('TRUNCATE lessons CASCADE');
+        await client.query('TRUNCATE lessons, vocabulary, exercises CASCADE');
         // Vocabulary and Exercises will be deleted automatically due to CASCADE
 
         // 2. Generate Data
@@ -42,8 +42,14 @@ async function seed() {
         const learningPath = generateLearningPath();
         console.log(`📝 Found ${learningPath.length} days of content.`);
 
+        console.log('🌱 Seeding REAL content for Day 1 and Day 2 only...');
+
+        // Filter to get only Day 1 and Day 2
+        const daysToSeed = learningPath.filter(day => day.day === 1 || day.day === 2);
+        console.log(`📝 Processing ${daysToSeed.length} days of content.`);
+
         // 3. Insert Data
-        for (const day of learningPath) {
+        for (const day of daysToSeed) {
             console.log(`\nProcessing Day ${day.day} (${day.level})...`);
 
             // A. Insert Lesson
@@ -55,7 +61,7 @@ async function seed() {
             const insertLessonQuery = `
                 INSERT INTO lessons (
                     day_number, level, title, description, 
-                    grammar_topic, grammar_content, reading_text, 
+                    grammar_topic, document_content, reading_text, 
                     video_url, created_at
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
                 RETURNING id;
@@ -67,7 +73,7 @@ async function seed() {
                 day.title,
                 day.description,
                 grammarTopic,
-                grammarContent,
+                grammarContent, // This variable holds the description, which we are now putting into document_content
                 readingText,
                 day.videoUrl
             ]);
@@ -75,17 +81,49 @@ async function seed() {
             const lessonId = lessonResult.rows[0].id;
             console.log(`   - Created Lesson ID: ${lessonId}`);
 
-            // B. Insert Vocabulary
-            if (day.vocabulary && day.vocabulary.length > 0) {
-                let vocabCount = 0;
-                for (const vocab of day.vocabulary) {
-                    await client.query(`
-                        INSERT INTO vocabulary (lesson_id, word, translation, example, category)
-                        VALUES ($1, $2, $3, $4, $5)
-                    `, [lessonId, vocab.word, vocab.translation, vocab.example, vocab.category]);
-                    vocabCount++;
-                }
-                console.log(`   - Inserted ${vocabCount} vocabulary words`);
+            // B. Insert Vocabulary (10 words in one row per day)
+            if (day.vocabulary && day.vocabulary.length >= 10) {
+                const v = day.vocabulary; // Array of 10 words
+                await client.query(`
+                    INSERT INTO vocabulary (
+                        day_number, 
+                        word, translation, example,
+                        word1, translation1, example1,
+                        word2, translation2, example2,
+                        word3, translation3, example3,
+                        word4, translation4, example4,
+                        word5, translation5, example5,
+                        word6, translation6, example6,
+                        word7, translation7, example7,
+                        word8, translation8, example8,
+                        word9, translation9, example9
+                    ) VALUES (
+                        $1, 
+                        $2, $3, $4,
+                        $5, $6, $7,
+                        $8, $9, $10,
+                        $11, $12, $13,
+                        $14, $15, $16,
+                        $17, $18, $19,
+                        $20, $21, $22,
+                        $23, $24, $25,
+                        $26, $27, $28,
+                        $29, $30, $31
+                    )
+                `, [
+                    day.day, // Use day number instead of lessonId
+                    v[0].word, v[0].translation, v[0].example,
+                    v[1].word, v[1].translation, v[1].example,
+                    v[2].word, v[2].translation, v[2].example,
+                    v[3].word, v[3].translation, v[3].example,
+                    v[4].word, v[4].translation, v[4].example,
+                    v[5].word, v[5].translation, v[5].example,
+                    v[6].word, v[6].translation, v[6].example,
+                    v[7].word, v[7].translation, v[7].example,
+                    v[8].word, v[8].translation, v[8].example,
+                    v[9].word, v[9].translation, v[9].example
+                ]);
+                console.log(`   - Inserted 10 vocabulary words for Day ${day.day}`);
             }
 
             // C. Insert Exercises

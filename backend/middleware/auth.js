@@ -48,11 +48,18 @@ export const sendTokenResponse = (user, statusCode, res) => {
     );
 
     // Cookie options
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // In development (localhost), we cannot use Secure: true (unless using https locally)
+    // and SameSite: 'none' requires Secure: true.
+    // So for dev: Secure: false, SameSite: 'lax' (default)
+    // For prod: Secure: true, SameSite: 'none' (for cross-site if backend/frontend separated like Railway/Netlify)
+
     const options = {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         httpOnly: true, // Cannot be accessed by JavaScript
-        secure: true, // Always secure for cross-site
-        sameSite: 'none' // Required for cross-site cookies (Netlify -> Railway)
+        secure: isProduction, // True in prod, False in dev
+        sameSite: isProduction ? 'none' : 'lax' // None in prod (cross-origin), Lax in dev
     };
 
     res

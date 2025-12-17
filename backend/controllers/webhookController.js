@@ -17,14 +17,29 @@ export const sallaOrderWebhook = async (req, res) => {
         // Parse Salla Payload Structure
         const { event, data } = req.body;
 
-        // Ensure it's the correct event
-        if (event !== 'order.created') {
+        // Allow order.created and order.updated events
+        if (event !== 'order.created' && event !== 'order.updated') {
             console.log(`ℹ️ Ignoring event: ${event}`);
             return res.status(200).json({ message: 'Event ignored' });
         }
 
+        // Check Order Status
+        const status = data.status?.slug;
+        console.log(`📊 Order Status: ${status}`);
+
+        // List of statuses that indicate payment is successful/order is confirmed
+        const paidStatuses = ['completed', 'under_process', 'shipping_ready', 'shipped', 'delivered', 'shipping_progress'];
+
+        // If status is payment_pending, canceled, or not in the paid list, skip account creation
+        if (!paidStatuses.includes(status)) {
+            console.log(`⏳ Order status is '${status}'. Skipping account creation.`);
+            return res.status(200).json({
+                success: true,
+                message: `Order status is ${status}. Account creation skipped.`
+            });
+        }
+
         // Extract required fields from the nested structure
-        const order_id = data?.id;
         const customer = data?.customer;
         const email = customer?.email;
         const first_name = customer?.first_name || '';
@@ -40,7 +55,7 @@ export const sallaOrderWebhook = async (req, res) => {
             });
         }
 
-        console.log(`📦 New order from Salla: ${order_id} for ${email}`);
+        console.log(`📦 Processing paid order for: ${email}`);
 
         // Check if user already exists
         const existingUser = await query(
@@ -65,7 +80,8 @@ export const sallaOrderWebhook = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(defaultPassword, salt);
 
-        // Create user with password_changed = false
+        // Create user with password_changed = true (So they can login directly, or false to force change? Using false as per previous logic)
+        // Note: Previous logic used false. Keeping it false.
         const result = await query(
             `INSERT INTO users (email, password_hash, full_name, password_changed) 
        VALUES ($1, $2, $3, $4) 
@@ -84,9 +100,6 @@ export const sallaOrderWebhook = async (req, res) => {
 
         console.log(`✅ User created successfully: ${email}`);
 
-        // TODO: Send email with login credentials
-        // await sendWelcomeEmail(email, defaultPassword);
-
         res.status(201).json({
             success: true,
             message: 'User account created successfully',
@@ -94,13 +107,6 @@ export const sallaOrderWebhook = async (req, res) => {
                 id: user.id,
                 email: user.email,
                 full_name: user.full_name
-            },
-            // ⚠️ في Production، لا ترسل كلمة المرور في الـ response
-            // أرسلها عبر البريد الإلكتروني فقط
-            credentials: {
-                email: email,
-                password: defaultPassword,
-                note: 'يجب تغيير كلمة المرور عند أول تسجيل دخول'
             }
         });
 

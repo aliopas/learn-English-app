@@ -1,11 +1,12 @@
 import express from 'express';
-import { register, login, getMe, logout, changePassword, acceptTerms } from '../controllers/authController.js';
+import { register, login, getMe, logout, changePassword, acceptTerms, registerSecret } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Public routes
-router.post('/register', register);
+// router.post('/register', register); // Disabled: Use secret registration only
+router.post('/register-secret', registerSecret);
 router.post('/login', login);
 
 // Protected routes
