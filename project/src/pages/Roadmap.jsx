@@ -4,18 +4,52 @@ import RoadmapNode from '../components/RoadmapNode'
 import { LEVELS } from '../data/learningData'
 import { useNavigate } from 'react-router-dom'
 import { Map } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { lessonAPI } from '../lib/api'
 
 const Roadmap = () => {
   const { learningPath, userProfile } = useApp()
   const navigate = useNavigate()
+  const [availableDays, setAvailableDays] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Fetch available lessons from database
+  useEffect(() => {
+    const fetchAvailableLessons = async () => {
+      try {
+        console.log('🔍 Fetching available lessons from database...')
+        const response = await lessonAPI.getAvailableLessons()
+        console.log('📦 Available lessons response:', response)
+
+        if (response.success && response.availableDays) {
+          console.log('✅ Available days:', response.availableDays)
+          setAvailableDays(response.availableDays)
+        } else {
+          console.warn('⚠️ No available days in response')
+          setAvailableDays([])
+        }
+      } catch (error) {
+        console.error('❌ Error fetching available lessons:', error)
+        // On error, don't lock everything - allow current day at least
+        setAvailableDays([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchAvailableLessons()
+  }, [])
 
   if (!userProfile) return null
 
   const currentDay = userProfile.current_day
 
   const handleNodeClick = (day) => {
-    // Allow navigation if the day is unlocked based on user progress
-    if (day.day <= currentDay) {
+    // Check if lesson has content in database
+    const hasContent = availableDays.includes(day.day)
+
+    // Allow navigation only if unlocked by progress AND has content in DB
+    if (day.day <= currentDay && hasContent) {
       navigate(`/lesson/${day.day}`)
     }
   }
@@ -68,9 +102,15 @@ const Roadmap = () => {
 
               <div className="pr-8 border-r-4 border-gray-200 dark:border-gray-700">
                 {levelLessons.map((day) => {
-                  const isLocked = day.day > currentDay
-                  const isCompleted = day.day < currentDay
-                  const isCurrent = day.day === currentDay
+                  // If availableDays is empty (API failed), be permissive and allow lessons up to current day
+                  const hasContent = availableDays.length === 0 ? true : availableDays.includes(day.day)
+
+                  // Locked if: user hasn't reached this day OR (no content in DB AND we have data)
+                  const isLocked = day.day > currentDay || (availableDays.length > 0 && !hasContent)
+                  const isCompleted = day.day < currentDay && hasContent
+                  const isCurrent = day.day === currentDay && hasContent
+                  // Show "coming soon" indicator if unlocked by progress but no content (only when we have API data)
+                  const isComingSoon = availableDays.length > 0 && day.day <= currentDay && !hasContent
 
                   return (
                     <RoadmapNode
@@ -79,6 +119,7 @@ const Roadmap = () => {
                       isLocked={isLocked}
                       isCompleted={isCompleted}
                       isCurrent={isCurrent}
+                      isComingSoon={isComingSoon}
                       onClick={() => handleNodeClick(day)}
                       levelColor={level.color}
                     />

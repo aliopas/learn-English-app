@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { BookOpen, Mail, Lock, Sparkles } from 'lucide-react'
 
@@ -94,8 +95,14 @@ const Auth = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-8 border-t border-white/20 text-center text-purple-100/60 text-sm">
-          <p>ليس لديك حساب؟ قم بشراء الدورة من متجرنا على سلة</p>
+        <div className="mt-8 pt-8 border-t border-white/20 text-center">
+          <p className="text-purple-100/60 text-sm mb-4">ليس لديك حساب؟</p>
+          <Link
+            to="/register-direct-access-v1-k9p2"
+            className="text-white font-bold hover:underline"
+          >
+            إنشاء حساب جديد مجاناً
+          </Link>
         </div>
       </div>
     </div>

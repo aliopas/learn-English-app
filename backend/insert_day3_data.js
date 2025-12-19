@@ -1,0 +1,181 @@
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// 1. Load Environment Variables FIRST
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env explicitly from the current directory (backend/)
+dotenv.config({ path: join(__dirname, '.env') });
+
+console.log('✅ Loaded Environment Variables');
+console.log('DB_USER:', process.env.DB_USER); // Debug log (don't show password)
+
+// 2. Import database config dynamically AFTER env vars are loaded
+const { query } = await import('./config/database.js');
+
+const day3Data = {
+    day_number: 3,
+    level: 'A1',
+    title: 'فعل الكينونة في الماضي: صيغة النفي',
+    grammar_topic: 'كيف تقول "لم أكن" أو "لم يكونوا" بشكل صحيح؟',
+    description: 'هل تذكر درس (Was/Were)؟ اليوم سنضيف لمسة بسيطة لتغيير المعنى تماماً! سنتعلم كيفية نفي الجمل في الماضي باستخدام كلمة واحدة سحرية وهي "Not". هذه المهارة ضرورية جداً لتصحيح المعلومات، أو وصف رحلة "لم تكن" جيدة، أو نفي صفة معينة. سنركز بشكل خاص على الاختصارات الشائعة جداً في المحادثات اليومية (Wasn\'t و Weren\'t) لتبدو لغتك طبيعية ومتقنة.',
+    video_url: 'https://drive.google.com/file/d/1N04lhMikiNTf4quZ4pN7GpqQ2XPUhBIA/view?usp=drive_link',
+    image_url: 'https://drive.google.com/file/d/16tLXrAO3q2kscHTF1rBsw6Dhly-B57z8/view?usp=drive_link',
+    grammar_content: 'https://docs.google.com/document/d/1JiMH6ePa7IWGLa1z2VVfWNClEMDG9Qu0i0CNDUp2nDk/edit?usp=sharing',
+    reading_text: "Last weekend, my family and I went to the beach, but it wasn't a good trip. The weather wasn't sunny at all; it was rainy and cold. We stayed at a hotel, but the room wasn't clean, and the beds weren't comfortable. My brother wasn't happy because the TV wasn't working. My parents weren't pleased with the food at the restaurant because it wasn't fresh. Even the water in the ocean wasn't warm, so we weren't able to swim. It definitely wasn't our best holiday, but we were glad to be together.",
+
+    vocabulary_list: [
+        { "id": 1, "word": "Sunny", "translation": "مشمش" },
+        { "id": 2, "word": "Rainy", "translation": "مُمطر" },
+        { "id": 3, "word": "Comfortable", "translation": "مريح" },
+        { "id": 4, "word": "Fresh", "translation": "طازج" },
+        { "id": 5, "word": "Busy", "translation": "مشغول" },
+        { "id": 6, "word": "Free", "translation": "متفرغ / حر" },
+        { "id": 7, "word": "Expensive", "translation": "غالي الثمن" },
+        { "id": 8, "word": "Cheap", "translation": "رخيص" },
+        { "id": 9, "word": "Wrong", "translation": "خاطئ" },
+        { "id": 10, "word": "Correct", "translation": "صحيح" }
+    ],
+
+    quiz_list: [
+        { "id": 1, "question": "I ___ at school yesterday.", "options": ["weren't", "wasn't", "isn't", "aren't"], "answer": "wasn't", "explanation": "الضمير I مفرد، لذا نستخدم wasn't للنفي في الماضي." },
+        { "id": 2, "question": "They ___ happy with the food.", "options": ["wasn't", "weren't", "isn't", "not"], "answer": "weren't", "explanation": "الضمير They جمع، لذا نستخدم weren't." },
+        { "id": 3, "question": "The movie ___ good.", "options": ["weren't", "aren't", "wasn't", "not"], "answer": "wasn't", "explanation": "الفيلم (The movie) مفرد غير عاقل (It)، لذا نستخدم wasn't." },
+        { "id": 4, "question": "We ___ in London last year.", "options": ["wasn't", "weren't", "isn't", "am not"], "answer": "weren't", "explanation": "الضمير We جمع، لذا نستخدم weren't." },
+        { "id": 5, "question": "She ___ angry at you.", "options": ["weren't", "aren't", "wasn't", "werenot"], "answer": "wasn't", "explanation": "الضمير She مفرد، لذا نستخدم wasn't." },
+        { "id": 6, "question": "The shops ___ open on Sunday.", "options": ["wasn't", "weren't", "isn't", "was"], "answer": "weren't", "explanation": "المحلات (The shops) جمع، لذا نستخدم weren't." },
+        { "id": 7, "question": "It ___ cold outside.", "options": ["weren't", "aren't", "wasn't", "not"], "answer": "wasn't", "explanation": "الضمير It مفرد، لذا نستخدم wasn't." },
+        { "id": 8, "question": "You ___ late for the meeting.", "options": ["wasn't", "isn't", "weren't", "not"], "answer": "weren't", "explanation": "الضمير You يعامل دائماً معاملة الجمع في القواعد، لذا نستخدم weren't." },
+        { "id": 9, "question": "My parents ___ at home.", "options": ["wasn't", "weren't", "isn't", "was"], "answer": "weren't", "explanation": "والداي (My parents) جمع، لذا نستخدم weren't." },
+        { "id": 10, "question": "The test ___ easy.", "options": ["weren't", "wasn't", "aren't", "were"], "answer": "wasn't", "explanation": "الاختبار (The test) مفرد، لذا نستخدم wasn't." },
+        { "id": 11, "question": "Ahmed and Ali ___ friends in 2010.", "options": ["wasn't", "isn't", "weren't", "was"], "answer": "weren't", "explanation": "أحمد وعلي (مثنى/جمع)، لذا نستخدم weren't." },
+        { "id": 12, "question": "The car ___ blue, it was red.", "options": ["weren't", "aren't", "wasn't", "not"], "answer": "wasn't", "explanation": "السيارة مفرد، لذا نستخدم wasn't." },
+        { "id": 13, "question": "I ___ tired last night.", "options": ["weren't", "aren't", "wasn't", "isn't"], "answer": "wasn't", "explanation": "الضمير I يأخذ wasn't." },
+        { "id": 14, "question": "Those shoes ___ cheap.", "options": ["wasn't", "weren't", "isn't", "was"], "answer": "weren't", "explanation": "تلك الأحذية (Those shoes) جمع، لذا نستخدم weren't." },
+        { "id": 15, "question": "The coffee ___ hot.", "options": ["weren't", "aren't", "wasn't", "not"], "answer": "wasn't", "explanation": "القهوة (The coffee) مفرد غير معدود، لذا نستخدم wasn't." },
+        { "id": 16, "question": "You and I ___ ready.", "options": ["wasn't", "isn't", "weren't", "am not"], "answer": "weren't", "explanation": "أنت وأنا (You and I) تساوي We، لذا نستخدم weren't." },
+        { "id": 17, "question": "My phone ___ in my pocket.", "options": ["weren't", "aren't", "wasn't", "were"], "answer": "wasn't", "explanation": "هاتفي (My phone) مفرد، لذا نستخدم wasn't." },
+        { "id": 18, "question": "The keys ___ in the car.", "options": ["wasn't", "weren't", "isn't", "was"], "answer": "weren't", "explanation": "المفاتيح (The keys) جمع، لذا نستخدم weren't." },
+        { "id": 19, "question": "He ___ a teacher, he was a student.", "options": ["weren't", "aren't", "wasn't", "not"], "answer": "wasn't", "explanation": "الضمير He يأخذ wasn't." },
+        { "id": 20, "question": "They ___ busy on Saturday.", "options": ["wasn't", "isn't", "weren't", "was"], "answer": "weren't", "explanation": "الضمير They يأخذ weren't." }
+    ],
+
+    flashcards_list: [
+        { "id": 1, "front": "I wasn't", "back": "أنا لم أكن" },
+        { "id": 2, "front": "You weren't (Singular)", "back": "أنتَ لم تكن" },
+        { "id": 3, "front": "He wasn't", "back": "هو لم يكن" },
+        { "id": 4, "front": "She wasn't", "back": "هي لم تكن" },
+        { "id": 5, "front": "It wasn't", "back": "إنه/إنها لم تكن (لغير العاقل)" },
+        { "id": 6, "front": "We weren't", "back": "نحن لم نكن" },
+        { "id": 7, "front": "They weren't", "back": "هم لم يكونوا" },
+        { "id": 8, "front": "You weren't (Plural)", "back": "أنتم لم تكونوا" },
+        { "id": 9, "front": "I was not", "back": "أنا لم أكن (صيغة كاملة)" },
+        { "id": 10, "front": "They were not", "back": "هم لم يكونوا (صيغة كاملة)" },
+        { "id": 11, "front": "It wasn't me", "back": "لم أكن أنا" },
+        { "id": 12, "front": "He wasn't ready", "back": "هو لم يكن جاهزاً" },
+        { "id": 13, "front": "She wasn't hungry", "back": "هي لم تكن جائعة" },
+        { "id": 14, "front": "We weren't late", "back": "نحن لم نكن متأخرين" },
+        { "id": 15, "front": "They weren't home", "back": "هم لم يكونوا في المنزل" },
+        { "id": 16, "front": "It wasn't easy", "back": "لم يكن الأمر سهلاً" },
+        { "id": 17, "front": "The food wasn't good", "back": "الطعام لم يكن جيداً" },
+        { "id": 18, "front": "The test wasn't hard", "back": "الاختبار لم يكن صعباً" },
+        { "id": 19, "front": "My friends weren't there", "back": "أصدقائي لم يكونوا هناك" },
+        { "id": 20, "front": "The door wasn't locked", "back": "الباب لم يكن مقفلاً" },
+        { "id": 21, "front": "I wasn't happy", "back": "لم أكن سعيداً" },
+        { "id": 22, "front": "You weren't listening", "back": "أنت لم تكن تستمع" },
+        { "id": 23, "front": "It wasn't funny", "back": "لم يكن مضحكاً" },
+        { "id": 24, "front": "The movie wasn't long", "back": "الفيلم لم يكن طويلاً" },
+        { "id": 25, "front": "The car wasn't expensive", "back": "السيارة لم تكن غالية" },
+        { "id": 26, "front": "The weather wasn't nice", "back": "الطقس لم يكن جميلاً" },
+        { "id": 27, "front": "We weren't tired", "back": "نحن لم نكن متعبين" },
+        { "id": 28, "front": "They weren't sure", "back": "هم لم يكونوا متأكدين" },
+        { "id": 29, "front": "He wasn't wrong", "back": "هو لم يكن مخطئاً" },
+        { "id": 30, "front": "She wasn't alone", "back": "هي لم تكن وحدها" },
+        { "id": 31, "front": "The bus wasn't fast", "back": "الحافلة لم تكن سريعة" },
+        { "id": 32, "front": "The shops weren't open", "back": "المحلات لم تكن مفتوحة" },
+        { "id": 33, "front": "My keys weren't lost", "back": "مفاتيحي لم تكن ضائعة" },
+        { "id": 34, "front": "The water wasn't cold", "back": "الماء لم يكن بارداً" },
+        { "id": 35, "front": "The dog wasn't dangerous", "back": "الكلب لم يكن خطيراً" },
+        { "id": 36, "front": "I wasn't afraid", "back": "أنا لم أكن خائفاً" },
+        { "id": 37, "front": "You weren't invited", "back": "أنت لم تكن مدعواً" },
+        { "id": 38, "front": "It wasn't true", "back": "لم يكن صحيحاً" },
+        { "id": 39, "front": "The problem wasn't big", "back": "المشكلة لم تكن كبيرة" },
+        { "id": 40, "front": "We weren't bored", "back": "نحن لم نكن شاعرين بالملل" },
+        { "id": 41, "front": "Wasn't (Short for)", "back": "Was not" },
+        { "id": 42, "front": "Weren't (Short for)", "back": "Were not" },
+        { "id": 43, "front": "Yesterday it wasn't hot", "back": "أمس لم يكن الجو حاراً" },
+        { "id": 44, "front": "Last week we weren't here", "back": "الأسبوع الماضي لم نكن هنا" },
+        { "id": 45, "front": "The room wasn't dirty", "back": "الغرفة لم تكن متسخة" },
+        { "id": 46, "front": "The shoes weren't black", "back": "الحذاء لم يكن أسود" },
+        { "id": 47, "front": "My teacher wasn't angry", "back": "معلمي لم يكن غاضباً" },
+        { "id": 48, "front": "The windows weren't clean", "back": "النوافذ لم تكن نظيفة" },
+        { "id": 49, "front": "The answer wasn't right", "back": "الإجابة لم تكن صحيحة" },
+        { "id": 50, "front": "I wasn't busy", "back": "لم أكن مشغولاً" }
+    ]
+};
+
+async function insertData() {
+    try {
+        console.log('Inserting Day 3 Data...');
+
+        const insertQuery = `
+            INSERT INTO lessons (
+                day_number, 
+                title, 
+                level, 
+                description, 
+                grammar_topic, 
+                grammar_content, 
+                reading_text, 
+                video_url, 
+                image_url,
+                vocabulary_list,
+                quiz_list,
+                flashcards_list,
+                updated_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                $10, $11, $12, NOW()
+            )
+            ON CONFLICT (day_number) DO UPDATE SET 
+                title = EXCLUDED.title,
+                level = EXCLUDED.level,
+                description = EXCLUDED.description,
+                grammar_topic = EXCLUDED.grammar_topic,
+                grammar_content = EXCLUDED.grammar_content,
+                reading_text = EXCLUDED.reading_text,
+                video_url = EXCLUDED.video_url,
+                image_url = EXCLUDED.image_url,
+                vocabulary_list = EXCLUDED.vocabulary_list,
+                quiz_list = EXCLUDED.quiz_list,
+                flashcards_list = EXCLUDED.flashcards_list,
+                updated_at = NOW()
+        `;
+
+        const values = [
+            day3Data.day_number,
+            day3Data.title,
+            day3Data.level,
+            day3Data.description,
+            day3Data.grammar_topic,
+            day3Data.grammar_content,
+            day3Data.reading_text,
+            day3Data.video_url,
+            day3Data.image_url,
+            JSON.stringify(day3Data.vocabulary_list),
+            JSON.stringify(day3Data.quiz_list),
+            JSON.stringify(day3Data.flashcards_list)
+        ];
+
+        await query(insertQuery, values);
+        console.log('Day 3 Data Inserted Successfully! ✅');
+        process.exit(0);
+    } catch (error) {
+        console.error('Error inserting data:', error);
+        process.exit(1);
+    }
+}
+
+insertData();

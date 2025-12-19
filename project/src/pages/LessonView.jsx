@@ -124,14 +124,17 @@ const LessonView = () => {
 
     const correctAnswer = ex.correctAnswer !== undefined ? ex.correctAnswer : ex.correct_answer;
 
-    // Multiple Choice: correctAnswer is an index (number)
+    // Multiple Choice: compare the selected option text with correct answer
     if (isMultipleChoice(ex)) {
       const options = getOptions(ex);
       if (!options || !Array.isArray(options)) return false;
 
-      const selectedIndex = options.indexOf(userAnswer);
-      // Check if the selected option's index matches the correct answer index
-      return selectedIndex !== -1 && selectedIndex == correctAnswer;
+      // Normalize both for comparison
+      const normalizedUser = String(userAnswer).trim().toLowerCase();
+      const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
+
+      // Direct string comparison - the answer is the text, not an index
+      return normalizedUser === normalizedCorrect;
     }
 
     // Fill-blank & Translate: correctAnswer is a string - text comparison
@@ -287,6 +290,40 @@ const LessonView = () => {
   }
 
   if (!lesson) {
+    // Check if this is a valid day number but just not in database yet
+    const isValidDay = dayId >= 1 && dayId <= 30;
+
+    if (isValidDay && !error) {
+      // Lesson exists in roadmap but not in database yet
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-purple-900 dark:to-gray-900 p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass rounded-3xl p-12 text-center max-w-2xl"
+          >
+            <div className="text-8xl mb-6">🔒</div>
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">
+              الدرس قيد الإعداد
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400 mb-6">
+              محتوى اليوم {dayId} لم يتم إضافته بعد. نعمل على إعداد محتوى تعليمي مميز لك!
+            </p>
+            <p className="text-lg text-gray-500 dark:text-gray-500 mb-8">
+              سيتم إضافة هذا الدرس قريباً. يرجى العودة لاحقاً أو التواصل مع فريق الدعم.
+            </p>
+            <button
+              onClick={() => navigate('/roadmap')}
+              className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl transition-all font-bold text-lg"
+            >
+              العودة للخارطة
+            </button>
+          </motion.div>
+        </div>
+      )
+    }
+
+    // Truly invalid lesson
     return (
       <div className="min-h-screen flex items-center justify-center dark:bg-gray-900 dark:text-white">
         <div className="text-center">
@@ -573,18 +610,43 @@ const LessonView = () => {
               <div className="prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl mb-8 border border-gray-100 dark:border-gray-700">
                 {(() => {
                   const docUrl = lesson.documentContent;
-                  const getEmbedUrl = (url) => {
-                    if (!url || !url.startsWith('http')) return null;
+
+                  const getGoogleDocEmbedUrl = (url) => {
+                    if (!url || typeof url !== 'string' || !url.startsWith('http')) return null;
+
                     try {
                       const urlObj = new URL(url);
+
+                      // Check if it's a Google Docs URL
                       if (urlObj.hostname.includes('docs.google.com')) {
-                        return url.replace(/\/edit.*$/, '/preview').replace(/\/view.*$/, '/preview');
+                        // Extract document ID from various Google Docs URL formats
+                        let docId = null;
+
+                        // Format: /document/d/{ID}/edit or /document/d/{ID}/view
+                        const docMatch = url.match(/\/document\/d\/([a-zA-Z0-9-_]+)/);
+                        if (docMatch) {
+                          docId = docMatch[1];
+                        }
+
+                        if (docId) {
+                          // Return embedded view-only URL
+                          return `https://docs.google.com/document/d/${docId}/preview`;
+                        }
+
+                        // Fallback: try to convert existing URL
+                        return url
+                          .replace(/\/edit.*$/, '/preview')
+                          .replace(/\/view.*$/, '/preview');
                       }
+
                       return url;
-                    } catch (e) { return null; }
+                    } catch (e) {
+                      console.error('Error parsing document URL:', e);
+                      return null;
+                    }
                   };
 
-                  const embedUrl = getEmbedUrl(docUrl);
+                  const embedUrl = getGoogleDocEmbedUrl(docUrl);
 
                   if (embedUrl) {
                     return (
@@ -595,6 +657,7 @@ const LessonView = () => {
                           title="Grammar Document"
                           loading="lazy"
                           allow="autoplay"
+                          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                         />
                       </div>
                     );
@@ -748,7 +811,8 @@ const LessonView = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {options.map((option, i) => {
                               const isSelected = userAnswer === option;
-                              const isCorrectOption = i === correctAnswer;
+                              // Compare option text with correct answer text (both normalized)
+                              const isCorrectOption = String(option).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase();
 
                               let btnClass = "p-3 rounded-xl text-left transition-all border-2 w-full ";
 

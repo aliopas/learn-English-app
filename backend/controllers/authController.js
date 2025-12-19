@@ -8,12 +8,26 @@ import { sendTokenResponse } from '../middleware/auth.js';
 export const register = async (req, res) => {
     try {
         const { email, password, full_name } = req.body;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
         // Validation
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
                 message: 'Please provide email and password'
+            });
+        }
+
+        // Check if IP has already registered
+        const ipCheck = await query(
+            'SELECT * FROM registration_ips WHERE ip_address = $1',
+            [ip]
+        );
+
+        if (ipCheck.rows.length > 0) {
+            return res.status(403).json({
+                success: false,
+                message: 'عذراً، لا يمكن إنشاء أكثر من حساب من نفس الجهاز.'
             });
         }
 
@@ -39,10 +53,16 @@ export const register = async (req, res) => {
             `INSERT INTO users (email, password_hash, full_name, password_changed) 
        VALUES ($1, $2, $3, $4) 
        RETURNING id, email, full_name, password_changed, created_at`,
-            [email, password_hash, full_name || null, true] // true because they set their own password
+            [email, password_hash, full_name || 'New User', true]
         );
 
         const user = result.rows[0];
+
+        // Record IP registration
+        await query(
+            'INSERT INTO registration_ips (ip_address, email) VALUES ($1, $2)',
+            [ip, email]
+        );
 
         // Create user profile
         await query(

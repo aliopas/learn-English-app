@@ -90,6 +90,11 @@ export const lessonAPI = {
         return apiClient(`/lessons/${dayNumber}`);
     },
 
+    // Get available lessons (days with content in database)
+    getAvailableLessons: async () => {
+        return apiClient('/lessons/available');
+    },
+
     // Complete lesson
     completeLesson: async (dayNumber, score, timeSpent) => {
         return apiClient(`/lessons/${dayNumber}/complete`, {

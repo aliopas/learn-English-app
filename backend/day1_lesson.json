@@ -1,0 +1,16 @@
+{
+    "day_01_data": {
+        "lessons": [
+            {
+                "day_number": 1,
+                "level": "A1",
+                "title": "أساسيات الضمائر في الإنجليزية",
+                "description": "تعلم كيف تتحدث بطلاقة وتجنب التكرار باستخدام الضمائر الصحيحة. سنشرح لك الفرق بين \"I\" و \"Me\" و \"My\" ومتى تستخدم كل واحدة منها.",
+                "grammar_topic": "Subject, Object, and Possessive Pronouns (الفاعل، المفعول، والملكية)",
+                "reading_text": "Hello, I am Ahmed, and this is my story. I live with my family in Riyadh. We have a nice house. This house is ours, and we love it very much.\n\nI have a sister named Sara. She is very smart. I help her with her homework, and she thanks me. That blue bag on the table is hers. I also have a brother named Ali. He likes football. He plays it every day. Sometimes, he hurts himself when he plays, but he is strong.\n\nOn Friday, we all go to the park. My father drives the car himself. He tells us funny stories. My mother makes delicious food for us. She says, 'This food is made by me, specifically for you.' They are the best parents. I love them very much, and they love me. Life is beautiful with them.",
+                "video_url": "https://drive.google.com/file/d/1n1PEaKAUdb0neeJw8XXvoo03B-QrUdyB/view?usp=drive_link",
+                "image_url": "https://drive.google.com/file/d/12WPO_adx32CgimFGd53gkYz6LB6PEzl9/view?usp=drive_link"
+            }
+        ]
+    }
+}

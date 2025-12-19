@@ -3,16 +3,49 @@ import { useApp } from '../context/AppContext'
 import ProgressCircle from '../components/ProgressCircle'
 import { Flame, Clock, Target, TrendingUp, BookOpen, Mic, Headphones, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { lessonAPI } from '../lib/api'
 
 const Dashboard = () => {
   const { userProfile, learningPath } = useApp()
   const navigate = useNavigate()
+  const [availableDays, setAvailableDays] = useState([])
+
+  // Fetch available lessons on mount
+  useEffect(() => {
+    const fetchAvailableLessons = async () => {
+      try {
+        const response = await lessonAPI.getAvailableLessons()
+        if (response.success && response.availableDays) {
+          setAvailableDays(response.availableDays)
+        }
+      } catch (error) {
+        console.error('Error fetching available lessons:', error)
+      }
+    }
+
+    fetchAvailableLessons()
+  }, [])
 
   if (!userProfile) return null
 
   const currentDay = userProfile.current_day
   const daysRemaining = 30 - currentDay + 1
   const todayLesson = learningPath.find(l => l.day === currentDay)
+
+  // Check if current day has content
+  const currentDayHasContent = availableDays.length === 0 || availableDays.includes(currentDay)
+
+  // Navigate to lesson with content check
+  const navigateToLesson = (day) => {
+    const hasContent = availableDays.length === 0 || availableDays.includes(day)
+    if (hasContent) {
+      navigate(`/lesson/${day}`)
+    } else {
+      // Show message or redirect to roadmap
+      navigate('/roadmap')
+    }
+  }
 
   const dailyTasks = [
     {
@@ -21,7 +54,8 @@ const Dashboard = () => {
       title: `ابدأ الدرس ${currentDay}`,
       description: todayLesson?.title || 'تعلم أساسيات جديدة',
       completed: false,
-      action: () => navigate(`/lesson/${currentDay}`)
+      action: () => navigateToLesson(currentDay),
+      disabled: !currentDayHasContent
     },
     {
       id: 2,
@@ -29,7 +63,8 @@ const Dashboard = () => {
       title: 'راجع كلماتك',
       description: `لديك ${userProfile.current_day * 5} كلمة للمراجعة`,
       completed: false,
-      action: () => navigate('/flashcards')
+      action: () => navigate('/flashcards'),
+      disabled: false
     },
     {
       id: 3,
@@ -37,7 +72,8 @@ const Dashboard = () => {
       title: 'محادثة سريعة',
       description: 'تحدث مع المعلم الذكي',
       completed: false,
-      action: () => navigate('/ai-tutor')
+      action: () => navigate('/ai-tutor'),
+      disabled: false
     },
     {
       id: 4,
@@ -45,7 +81,8 @@ const Dashboard = () => {
       title: 'تمرين استماع',
       description: 'حسن مهارة الاستماع',
       completed: false,
-      action: () => navigate(`/lesson/${currentDay}`)
+      action: () => navigateToLesson(currentDay),
+      disabled: !currentDayHasContent
     }
   ]
 
@@ -136,19 +173,33 @@ const Dashboard = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + index * 0.1 }}
-                  onClick={task.action}
-                  className="flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-gray-800 hover:shadow-lg transition-all cursor-pointer group"
-                  whileHover={{ x: -5 }}
+                  onClick={task.disabled ? undefined : task.action}
+                  className={`flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-gray-800 transition-all ${task.disabled
+                      ? 'opacity-60 cursor-not-allowed'
+                      : 'hover:shadow-lg cursor-pointer group'
+                    }`}
+                  whileHover={task.disabled ? {} : { x: -5 }}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${task.completed ? 'bg-green-100 text-green-600' : 'bg-purple-100 text-purple-600'
-                    } group-hover:scale-110 transition-transform`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${task.disabled
+                      ? 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
+                      : task.completed
+                        ? 'bg-green-100 text-green-600'
+                        : 'bg-purple-100 text-purple-600 group-hover:scale-110 transition-transform'
+                    }`}>
                     <task.icon className="w-6 h-6" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-gray-800 dark:text-white">{task.title}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{task.description}</p>
+                    <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                      {task.title}
+                      {task.disabled && <span className="text-xs text-amber-600">قريباً</span>}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {task.disabled ? 'المحتوى قيد الإعداد' : task.description}
+                    </p>
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${task.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-600'
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${task.completed
+                      ? 'bg-green-500 border-green-500'
+                      : 'border-gray-300 dark:border-gray-600'
                     }`}>
                     {task.completed && <span className="text-white text-xs">✓</span>}
                   </div>

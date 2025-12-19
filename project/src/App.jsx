@@ -11,6 +11,7 @@ import ChangePassword from './pages/ChangePassword'
 import VocabularyGame from './pages/VocabularyGame'
 
 import SecretRegister from './pages/SecretRegister'
+import Register from './pages/Register'
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading, needsPasswordChange } = useApp()
@@ -55,6 +56,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/auth" element={user ? <Navigate to="/" /> : <Auth />} />
+      <Route path="/register-direct-access-v1-k9p2" element={user ? <Navigate to="/" /> : <Register />} />
       <Route path="/auth/register-v2-super-secret-x9z" element={<SecretRegister />} />
       <Route path="/change-password" element={user ? <ChangePassword /> : <Navigate to="/auth" />} />
       <Route
