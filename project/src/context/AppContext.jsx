@@ -51,6 +51,7 @@ export const AppProvider = ({ children }) => {
       }
     } catch (error) {
       console.log('Not authenticated')
+      localStorage.removeItem('token')
       setUser(null)
       setUserProfile(null)
     } finally {
@@ -62,6 +63,7 @@ export const AppProvider = ({ children }) => {
     try {
       const data = await authAPI.login(email, password)
       if (data.success && data.user) {
+        if (data.token) localStorage.setItem('token', data.token)
         setUser({
           id: data.user.id,
           email: data.user.email,
@@ -85,6 +87,7 @@ export const AppProvider = ({ children }) => {
     try {
       const data = await authAPI.register(email, password, full_name)
       if (data.success && data.user) {
+        if (data.token) localStorage.setItem('token', data.token)
         setUser({
           id: data.user.id,
           email: data.user.email,
@@ -109,6 +112,7 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
+      localStorage.removeItem('token')
       setUser(null)
       setUserProfile(null)
       setNeedsPasswordChange(false)

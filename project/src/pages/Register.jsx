@@ -44,7 +44,7 @@ const Register = () => {
 
                     <div className="text-purple-100 flex items-center justify-center gap-2 mt-4">
                         <Sparkles className="w-5 h-5" />
-                        <span>انضم إلينا اليوم مجاناً</span>
+
                     </div>
                 </div>
 

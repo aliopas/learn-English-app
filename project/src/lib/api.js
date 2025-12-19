@@ -8,6 +8,7 @@ const apiClient = async (endpoint, options = {}) => {
         ...options,
         headers: {
             'Content-Type': 'application/json',
+            ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}),
             ...options.headers,
         },
         credentials: 'include', // Important: send cookies

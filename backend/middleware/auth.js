@@ -1,10 +1,18 @@
 import jwt from 'jsonwebtoken';
 
-// Middleware to verify JWT token from httpOnly cookie
+// Middleware to verify JWT token from httpOnly cookie or Authorization header
 export const protect = async (req, res, next) => {
     try {
-        // Get token from cookie
-        const token = req.cookies.token;
+        let token;
+
+        // Check for token in cookies
+        if (req.cookies.token) {
+            token = req.cookies.token;
+        }
+        // Check for token in Authorization header
+        else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+            token = req.headers.authorization.split(' ')[1];
+        }
 
         if (!token) {
             return res.status(401).json({
@@ -67,6 +75,7 @@ export const sendTokenResponse = (user, statusCode, res) => {
         .cookie('token', token, options)
         .json({
             success: true,
+            token, // Send token in body for mobile/Safari support
             user: {
                 id: user.id,
                 email: user.email,
