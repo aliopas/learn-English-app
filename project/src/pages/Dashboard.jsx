@@ -1,37 +1,85 @@
 import { motion } from 'framer-motion'
 import { useApp } from '../context/AppContext'
 import ProgressCircle from '../components/ProgressCircle'
-import { Flame, Clock, Target, TrendingUp, BookOpen, Mic, Headphones, FileText } from 'lucide-react'
+import { Flame, Clock, Target, TrendingUp, BookOpen, Mic, Headphones, FileText, Lock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import { lessonAPI } from '../lib/api'
+import { LEVELS, COURSE_INFO } from '../data/learningData'
+import { useInitialAppData } from '../hooks/useInitialAppData'
+import { useSmartLessons } from '../hooks/useSmartLessons'
 
 const Dashboard = () => {
-  const { userProfile, learningPath } = useApp()
+  const { userProfile } = useApp()
   const navigate = useNavigate()
-  const [availableDays, setAvailableDays] = useState([])
 
-  // Fetch available lessons on mount
-  useEffect(() => {
-    const fetchAvailableLessons = async () => {
-      try {
-        const response = await lessonAPI.getAvailableLessons()
-        if (response.success && response.availableDays) {
-          setAvailableDays(response.availableDays)
-        }
-      } catch (error) {
-        console.error('Error fetching available lessons:', error)
-      }
-    }
+  // 1. Get Global App Data (Cached from Roadmap)
+  const { data: initialData } = useInitialAppData()
+  const availableDays = initialData?.availableDays || []
 
-    fetchAvailableLessons()
-  }, [])
+  // 2. Smart Fetch Current + Next Lessons (Hydrates Cache)
+  const { lessons: smartLessons } = useSmartLessons(userProfile?.current_day)
 
   if (!userProfile) return null
 
   const currentDay = userProfile.current_day
-  const daysRemaining = 30 - currentDay + 1
-  const todayLesson = learningPath.find(l => l.day === currentDay)
+
+  // Get current lesson title from Smart Cache or Fallback to Initial Metadata
+  const currentLessonSmart = smartLessons.find(l => l.day === currentDay);
+  const currentLessonMeta = initialData?.lessons?.find(l => l.day === currentDay);
+
+  const lessonTitle = currentLessonSmart?.title || currentLessonMeta?.title || '';
+
+
+
+  // Determine current level and next level based on day
+  const getCurrentLevelInfo = () => {
+    let currentLevel, nextLevel, levelStart, levelEnd, dayInLevel, daysInLevel
+
+    if (currentDay <= 30) {
+      currentLevel = 'A1'
+      nextLevel = 'A2'
+      levelStart = 1
+      levelEnd = 30
+      daysInLevel = 30
+      dayInLevel = currentDay
+    } else if (currentDay <= 60) {
+      currentLevel = 'A2'
+      nextLevel = 'B1'
+      levelStart = 31
+      levelEnd = 60
+      daysInLevel = 30
+      dayInLevel = currentDay - 30
+    } else if (currentDay <= 90) {
+      currentLevel = 'B1'
+      nextLevel = 'B2'
+      levelStart = 61
+      levelEnd = 90
+      daysInLevel = 30
+      dayInLevel = currentDay - 60
+    } else {
+      currentLevel = 'B2'
+      nextLevel = 'إتقان'
+      levelStart = 91
+      levelEnd = 120
+      daysInLevel = 30
+      dayInLevel = currentDay - 90
+    }
+
+    const daysRemaining = levelEnd - currentDay + 1
+    const levelProgress = (dayInLevel / daysInLevel) * 100
+
+    return {
+      currentLevel: LEVELS[currentLevel].name,
+      nextLevel,
+      levelStart,
+      levelEnd,
+      dayInLevel,
+      daysInLevel,
+      daysRemaining,
+      levelProgress
+    }
+  }
+
+  const levelInfo = getCurrentLevelInfo()
 
   // Check if current day has content
   const currentDayHasContent = availableDays.length === 0 || availableDays.includes(currentDay)
@@ -47,52 +95,78 @@ const Dashboard = () => {
     }
   }
 
+  // Check if user has completed at least one lesson
+  const hasCompletedLesson = currentDay > 1 && availableDays.filter(d => d < currentDay).length > 0
+
   const dailyTasks = [
     {
       id: 1,
       icon: BookOpen,
       title: `ابدأ الدرس ${currentDay}`,
-      description: todayLesson?.title || 'تعلم أساسيات جديدة',
+      description: currentDayHasContent
+        ? (lessonTitle || `درس اليوم ${currentDay}`)
+        : 'هذا الدرس قيد الإعداد',
       completed: false,
       action: () => navigateToLesson(currentDay),
-      disabled: !currentDayHasContent
+      disabled: !currentDayHasContent,
+      lockIcon: !currentDayHasContent
     },
     {
       id: 2,
       icon: FileText,
       title: 'راجع كلماتك',
-      description: `لديك ${userProfile.current_day * 5} كلمة للمراجعة`,
+      description: hasCompletedLesson
+        ? `لديك ${availableDays.filter(d => d < currentDay).length * 10} كلمة للمراجعة`
+        : 'أكمل الدرس الأول لتبدأ المراجعة',
       completed: false,
       action: () => navigate('/flashcards'),
-      disabled: false
+      disabled: !hasCompletedLesson,
+      lockIcon: !hasCompletedLesson
     },
     {
       id: 3,
       icon: Mic,
-      title: 'محادثة سريعة',
-      description: 'تحدث مع المعلم الذكي',
+      title: 'المعلم الذكي',
+      description: 'قريباً جداً',
       completed: false,
-      action: () => navigate('/ai-tutor'),
-      disabled: false
+      action: () => { },
+      disabled: true,
+      lockIcon: false,
+      blur: true // Special blur effect
     },
     {
       id: 4,
       icon: Headphones,
-      title: 'تمرين استماع',
-      description: 'حسن مهارة الاستماع',
+      title: 'تمرين الاستماع',
+      description: currentDayHasContent
+        ? 'استمع وتعلم من الدرس'
+        : 'سيتوفر مع الدرس',
       completed: false,
-      action: () => navigateToLesson(currentDay),
-      disabled: !currentDayHasContent
+      action: () => {
+        if (currentDayHasContent) {
+          navigate(`/lesson/${currentDay}#listening`)
+        }
+      },
+      disabled: !currentDayHasContent,
+      lockIcon: !currentDayHasContent
     }
   ]
 
+  // Get emoji based on current level
+  const getLevelEmoji = () => {
+    if (currentDay <= 30) return '🌱' // A1
+    if (currentDay <= 60) return '🌿' // A2
+    if (currentDay <= 90) return '🌳' // B1
+    return '🏆' // B2
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-purple-900 dark:to-gray-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-purple-900 dark:to-gray-900 p-3 xs:p-4 sm:p-5 md:p-6">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-3xl p-8 mb-8 relative overflow-hidden"
+          className="glass rounded-2xl xs:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8 mb-4 xs:mb-6 sm:mb-8 relative overflow-hidden"
         >
           <div className="absolute top-0 left-0 w-full h-full opacity-10">
             <div className="absolute top-10 right-10 w-40 h-40 bg-purple-500 rounded-full blur-3xl" />
@@ -105,7 +179,7 @@ const Dashboard = () => {
                 <motion.h1
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="text-4xl font-bold text-gray-800 dark:text-white mb-2"
+                  className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-2"
                 >
                   مرحباً بك في رحلتك! 👋
                 </motion.h1>
@@ -113,57 +187,68 @@ const Dashboard = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="text-xl text-gray-600 dark:text-gray-300"
+                  className="text-sm xs:text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300"
                 >
-                  مستواك الحالي: <span className="font-bold text-purple-600 dark:text-purple-400">{userProfile.current_level}</span>
+                  مستواك الحالي: <span className="font-bold text-purple-600 dark:text-purple-400">{levelInfo.currentLevel}</span>
                 </motion.p>
               </div>
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3, type: "spring" }}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-bold text-lg shadow-lg"
+                className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 sm:px-6 py-2 xs:py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-bold text-xs xs:text-sm sm:text-base md:text-lg shadow-lg"
               >
-                <Flame className="w-6 h-6" />
+                <Flame className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6" />
                 <span>{userProfile.streak_days} يوم متتالي</span>
               </motion.div>
             </div>
 
+            {/* Level Progress Card */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl p-6 mt-6"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl xs:rounded-2xl p-4 xs:p-5 sm:p-6 mt-4 xs:mt-5 sm:mt-6"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">بقي لديك {daysRemaining} يوماً للوصول إلى B2</h2>
-                  <p className="text-purple-100">أنت في اليوم {currentDay} من 30</p>
+                  <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold mb-2">
+                    بقي لديك {levelInfo.daysRemaining} يوم للوصول إلى {levelInfo.nextLevel}
+                  </h2>
+                  <p className="text-xs xs:text-sm sm:text-base text-purple-100">
+                    أنت في اليوم {levelInfo.dayInLevel} من {levelInfo.daysInLevel} • {levelInfo.currentLevel}
+                  </p>
+                  <p className="text-purple-200 text-[10px] xs:text-xs sm:text-sm mt-1">
+                    اليوم {currentDay} من {COURSE_INFO.totalDays} إجمالي
+                  </p>
                 </div>
-                <div className="text-6xl">{currentDay <= 7 ? '🌱' : currentDay <= 14 ? '🌿' : currentDay <= 22 ? '🌳' : '🏆'}</div>
+                <div className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl flex-shrink-0">{getLevelEmoji()}</div>
               </div>
               <div className="mt-4 bg-white/20 rounded-full h-3 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${(currentDay / 30) * 100}%` }}
+                  animate={{ width: `${levelInfo.levelProgress}%` }}
                   transition={{ duration: 1.5, ease: "easeOut" }}
                   className="h-full bg-white rounded-full"
                 />
+              </div>
+              <div className="mt-2 text-right text-purple-100 text-xs xs:text-sm">
+                {Math.round(levelInfo.levelProgress)}% مكتمل في {levelInfo.currentLevel}
               </div>
             </motion.div>
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 xs:gap-4 sm:gap-5 md:gap-6 mb-4 xs:mb-6 sm:mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="lg:col-span-2 glass rounded-3xl p-8"
+            className="lg:col-span-2 glass rounded-2xl xs:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <Target className="w-8 h-8 text-purple-600" />
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">مهام اليوم 📝</h2>
+            <div className="flex items-center gap-2 xs:gap-3 mb-4 xs:mb-5 sm:mb-6">
+              <Target className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 text-purple-600" />
+              <h2 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">مهام اليوم 📝</h2>
             </div>
 
             <div className="space-y-4">
@@ -174,13 +259,18 @@ const Dashboard = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + index * 0.1 }}
                   onClick={task.disabled ? undefined : task.action}
-                  className={`flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-gray-800 transition-all ${task.disabled
-                      ? 'opacity-60 cursor-not-allowed'
-                      : 'hover:shadow-lg cursor-pointer group'
+                  className={`flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-gray-800 transition-all ${task.blur
+                    ? 'opacity-60 cursor-not-allowed border-2 border-purple-200 dark:border-purple-800'
+                    : task.disabled
+                      ? 'opacity-70 cursor-not-allowed border-2 border-dashed border-gray-300 dark:border-gray-600'
+                      : 'hover:shadow-lg cursor-pointer group border-2 border-transparent hover:border-purple-200'
                     }`}
-                  whileHover={task.disabled ? {} : { x: -5 }}
+                  whileHover={task.disabled || task.blur ? {} : { x: -5 }}
+                  style={task.blur ? { filter: 'blur(0.3px)', backdropFilter: 'blur(2px)' } : {}}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${task.disabled
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${task.blur
+                    ? 'bg-purple-100 text-purple-400 dark:bg-purple-900/30 dark:text-purple-500'
+                    : task.disabled
                       ? 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
                       : task.completed
                         ? 'bg-green-100 text-green-600'
@@ -191,17 +281,34 @@ const Dashboard = () => {
                   <div className="flex-1">
                     <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
                       {task.title}
-                      {task.disabled && <span className="text-xs text-amber-600">قريباً</span>}
+                      {task.lockIcon && (
+                        <Lock className="w-4 h-4 text-amber-500" />
+                      )}
+                      {task.blur && (
+                        <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400 rounded-full">
+                          قريباً
+                        </span>
+                      )}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {task.disabled ? 'المحتوى قيد الإعداد' : task.description}
+                      {task.description}
                     </p>
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${task.completed
-                      ? 'bg-green-500 border-green-500'
-                      : 'border-gray-300 dark:border-gray-600'
+                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${task.blur
+                    ? 'bg-purple-100 border-purple-300 dark:bg-purple-900/30 dark:border-purple-700'
+                    : task.lockIcon
+                      ? 'bg-amber-100 border-amber-300 dark:bg-amber-900/30 dark:border-amber-700'
+                      : task.completed
+                        ? 'bg-green-500 border-green-500'
+                        : 'border-gray-300 dark:border-gray-600'
                     }`}>
-                    {task.completed && <span className="text-white text-xs">✓</span>}
+                    {task.blur ? (
+                      <span className="text-purple-600 dark:text-purple-400 text-sm">⏳</span>
+                    ) : task.lockIcon ? (
+                      <Lock className="w-4 h-4 text-amber-600" />
+                    ) : task.completed ? (
+                      <span className="text-white text-xs">✓</span>
+                    ) : null}
                   </div>
                 </motion.div>
               ))}
@@ -212,11 +319,11 @@ const Dashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="glass rounded-3xl p-8"
+            className="glass rounded-2xl xs:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <TrendingUp className="w-8 h-8 text-purple-600" />
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">إحصائيات</h2>
+            <div className="flex items-center gap-2 xs:gap-3 mb-4 xs:mb-5 sm:mb-6">
+              <TrendingUp className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 text-purple-600" />
+              <h2 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">إحصائيات</h2>
             </div>
 
             <div className="space-y-6">
@@ -233,7 +340,7 @@ const Dashboard = () => {
                   <Target className="w-6 h-6 text-green-600" />
                   <span className="font-medium text-gray-700 dark:text-gray-300">الدروس المكتملة</span>
                 </div>
-                <span className="font-bold text-xl text-gray-800 dark:text-white">{currentDay - 1} / 30</span>
+                <span className="font-bold text-xl text-gray-800 dark:text-white">{currentDay - 1} / {COURSE_INFO.totalDays}</span>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl">
@@ -241,7 +348,7 @@ const Dashboard = () => {
                   <BookOpen className="w-6 h-6 text-purple-600" />
                   <span className="font-medium text-gray-700 dark:text-gray-300">الكلمات المتقنة</span>
                 </div>
-                <span className="font-bold text-xl text-gray-800 dark:text-white">{(currentDay - 1) * 10}</span>
+                <span className="font-bold text-xl text-gray-800 dark:text-white">{availableDays.filter(d => d < currentDay).length * 10}</span>
               </div>
             </div>
           </motion.div>
@@ -251,13 +358,13 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="glass rounded-3xl p-8"
+          className="glass rounded-2xl xs:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8"
         >
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-8 text-center">
+          <h2 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-4 xs:mb-6 sm:mb-8 text-center">
             إتقان المهارات الأربع 🎯
           </h2>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 xs:gap-4 sm:gap-6 md:gap-8">
             <ProgressCircle skill="الاستماع" score={userProfile.listening_score} color="#3b82f6" />
             <ProgressCircle skill="القراءة" score={userProfile.reading_score} color="#10b981" />
             <ProgressCircle skill="التحدث" score={userProfile.speaking_score} color="#f59e0b" />

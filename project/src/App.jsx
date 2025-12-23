@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AppProvider, useApp } from './context/AppContext'
 import Navbar from './components/Navbar'
+import GlobalLoadingScreen from './components/GlobalLoadingScreen'
 import Dashboard from './pages/Dashboard'
 import Roadmap from './pages/Roadmap'
 import LessonView from './pages/LessonView'
@@ -17,14 +18,7 @@ const ProtectedRoute = ({ children }) => {
   const { user, loading, needsPasswordChange } = useApp()
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">جاري التحميل...</p>
-        </div>
-      </div>
-    )
+    return <GlobalLoadingScreen message="جاري التحقق من حسابك..." />
   }
 
   if (!user) {

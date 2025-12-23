@@ -1,196 +1,150 @@
-# 🎓 AI-Powered English Learning Platform
+# 🎓 English Mastery Platform
 
 ![Project Status](https://img.shields.io/badge/Status-Active_Development-brightgreen)
-![Data](https://img.shields.io/badge/Database-PostgreSQL-blue)
 ![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB)
 ![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933)
+![Database](https://img.shields.io/badge/Database-PostgreSQL-blue)
 
-> A comprehensive, intelligent platform designed to help users master the English language through interactive lessons, games, and personalized AI guidance.
-
----
-
-## 🌟 Key Features
-
-### 👤 User Experience
-- **Secure Authentication**: Complete sign-up/login flow with JWT cookies, password change, and terms acceptance.
-- **Interactive Dashboard**: Track learning streaks, daily progress, and unlocked achievements.
-- **Roadmap Visualization**: A gamified learning path with locked/unlocked stages based on user levels.
-
-### 📚 Learning Tools
-- **Deep Lesson View**: A rich, multi-tab interface for every lesson including:
-  - 🎥 **Video Learning**: Embedding of YouTube or Google Drive educational content.
-  - 📖 **Vocabulary**: Interactive cards with pronunciation and examples.
-  - 📝 **Grammar**: Integrated document previews for deep dumps.
-  - 🗣️ **Reading**: Text-to-speech supported reading passages.
-  - 🧩 **Quizzes**: Auto-graded exercises with immediate feedback (Multiple Choice, Fill-in-Blank, Translation).
-- **Gamified Practice**:
-  - **Vocabulary Games**: Fun challenges to reinforce memory.
-  - **Flashcards**: Quick-review tool for active recall.
-
-### ⚙️ Technical Highlights
-- **Real-time Progress Saving**: Auto-saves quiz answers to the backend as you type.
-- **Responsive Design**: Mobile-first UI built with TailwindCSS and Framer Motion for smooth animations.
-- **Database Integrated**: Content is dynamically fetched from PostgreSQL, not hardcoded.
+> A comprehensive, AI-powered platform designed to guide users from beginner to mastery (A1 → B2) through a structured, 120-day interactive curriculum.
 
 ---
 
-## 🛠️ Technology Stack
+## 🌟 Project Overview
 
-### Frontend (`/project`)
-- **Core**: React 18, Vite
-- **Styling**: TailwindCSS, Framer Motion (Animations), Lucide React (Icons)
-- **State/Data**: React Context API, Custom Hooks
-- **Utils**: Canvas Confetti (Celebrations)
+The **English Mastery Platform** is a full-stack educational application that combines proven learning methods with modern technology. Unlike generic learning apps, it offers a **fixed 120-day roadmap** where every lesson unlocks sequentially, ensuring a disciplined and structured learning path.
 
-### Backend (`/backend`)
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: PostgreSQL (via `pg` and Drizzle ORM)
-- **Authentication**: JWT (HttpOnly Cookies), BcryptJS
-- **Security**: CORS, Cookie Parser
+It features a **custom Node.js backend** for robust state management, a **dynamic React frontend** for a fluid user experience, and integrates deeply with a **PostgreSQL database** to serve content, track progress, and maintain user streaks.
 
 ---
 
-## 📋 Prerequisites
+## ✨ Key Features
 
-- **Node.js** (v18.x or higher)
-- **PostgreSQL** Database (Local or Cloud like Railway/Neon)
-- **npm** or **yarn**
+### 📚 Structured Learning Engine
+- **120-Day Smart Roadmap**: A locked progression system that guides users through A1, A2, B1, and B2 levels.
+- **Dynamic Lesson Content**: Lessons include video player integration, PDF grammar dumps (Google Docs/Drive embed), and rich text vocabulary lists.
+- **Content Availability Check**: The system intelligently checks database content availability to manage "Coming Soon" states for future lessons.
+
+### 👤 Gamification & User Retention
+- **🔥 Streak System**: Tracks daily activity to build learning habits.
+- **Skill Radar**: Visualizes progress across 4 key skills: **Listening, Speaking, Reading, Grammar**.
+- **Level & Days Counter**: Dashboard widgets show exactly how many days remain to reach the next proficiency level.
+- **Flashcards Review**: A dedicated Spaced Repetition-style review system for vocabulary retention.
+
+### 🛡️ Security & Performance
+- **Custom Authentication**: Secure, HttpOnly Cookie-based JWT authentication (Login, Register, Password Reset).
+- **Terms & Conditions**: Integrated modal for GDPR/Policy compliance acknowledgement.
+- **Optimized Performance**: Uses React Query-like caching strategies and smart batch fetching for roadmap data to minimize API calls.
 
 ---
 
-## 🚀 Installation & Setup
+## 🛠️ Technical Architecture
 
-### 1. Clone the Repository
-```bash
-git clone <repository-url>
-cd project-bolt-sb1-jdrqcg9v
-```
+The project follows a **Monorepo-style** structure with separated Frontend and Backend directories.
+
+### 🖥️ Frontend (`/project`)
+- **Framework**: React 18 + Vite (Ultra-fast build tool).
+- **Language**: JavaScript (ES6+).
+- **Styling**: Tailwind CSS (Utility-first), with custom animations via Framer Motion.
+- **UI Components**: Lucide React icons, Glassmorphism design elements.
+- **State Management**: React Context API for global user state.
+- **Routing**: React Router DOM v6.
+
+### ⚙️ Backend (`/backend`)
+- **Runtime**: Node.js + Express.js.
+- **Database ORM**: Drizzle ORM (Type-safe SQL queries) + `pg` (PostgreSQL client).
+- **Database**: PostgreSQL (Relational data model for Users, Lessons, Progress, Streaks).
+- **Security**:
+  - `bcryptjs` for password hashing.
+  - `jsonwebtoken` for secure session management.
+  - `cors` for cross-origin resource sharing.
+
+---
+
+## 🔮 Future Roadmap (Coming Soon)
+
+We are actively developing "Phase 2" features centered around AI and deeper interactivity:
+
+### 🤖 1. AI Personal Tutor (In Active Development)
+An intelligent chatbot component (`AITutor.jsx`) is already outlined in the codebase.
+- **Scenario-Based Learning**: Users can choose scenarios (e.g., "Ordering Coffee", "Job Interview") to practice specific vocabulary.
+- **Live Corrections**: The AI will analyze user input and provide instant grammar and vocabulary corrections.
+
+### 🎙️ 2. Voice & Fluency Training
+- **Speech Recognition**: Integration with Web Speech API or OpenAI Whisper to grade user pronunciation.
+- **Voice Chat**: Real-time voice conversations with the AI Tutor.
+
+### 🧠 3. Adaptive Assessment System
+- **Placement Test**: A dynamic initial test to skip early levels if the user is advanced.
+- **Adaptive Quizzes**: Lesson quizzes that get harder or easier based on the user's streak and error rate.
+
+### 💳 4. Payment Integrations
+- **Salla/Stripe Webhooks**: Premium subscription modeling to unlock B1/B2 levels.
+
+---
+
+## 🚀 Installation & Setup Guide
+
+### Prerequisites
+- Node.js (v18+)
+- PostgreSQL (Local or Cloud URL)
+
+### 1. Database Setup
+Ensure you have a PostgreSQL database running. The schema files are located in `/project/database/`.
 
 ### 2. Backend Setup
-Navigate to the backend directory and install dependencies:
 ```bash
 cd backend
 npm install
 ```
-
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file in `/backend`:
 ```env
 PORT=5000
-NODE_ENV=development
+DATABASE_URL=postgres://user:pass@localhost:5432/dbname
+JWT_SECRET=your_secret_key
 FRONTEND_URL=http://localhost:5173
-DATABASE_URL=postgresql://user:password@host:port/dbname
-JWT_SECRET=your_super_secret_key_here
 ```
-
-Start the backend server:
+Run the server:
 ```bash
 npm run dev
-# Server will start on http://localhost:5000
 ```
 
 ### 3. Frontend Setup
-Open a new terminal, navigate to the project directory:
 ```bash
-cd ../project
+cd project
 npm install
 ```
-
-Create a `.env` file in the `project/` directory:
+Create a `.env` file in `/project`:
 ```env
-# Point to your running backend
 VITE_API_URL=http://localhost:5000/api
 ```
-
-Start the frontend development server:
+Run the client:
 ```bash
 npm run dev
-# Frontend will start on http://localhost:5173
 ```
 
-### 4. Database Setup
-To initialize the database schema using the migration scripts found in `project/database`:
-
-1. Ensure your `project/.env` also includes DB credentials for the migration script (optional if using external tools):
-   ```env
-   VITE_DB_HOST=localhost
-   VITE_DB_PORT=5432
-   VITE_DB_USER=postgres
-   VITE_DB_PASSWORD=password
-   VITE_DB_NAME=english_app
-   ```
-2. Run the migration:
-   ```bash
-   npm run db:migrate
-   ```
+The application will be available at `http://localhost:5173`.
 
 ---
 
-## � API Documentation
-
-### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Create a new user account |
-| POST | `/api/auth/login` | Login and receive HTTP-only cookie |
-| GET | `/api/auth/me` | Get current user profile (Protected) |
-| POST | `/api/auth/logout` | Clear auth cookies |
-| PUT | `/api/auth/change-password` | Update user password |
-| PUT | `/api/auth/accept-terms` | Mark terms as accepted |
-
-### Lessons & Progress
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/lessons/:dayNumber` | Get full lesson content (Video, Vocab, etc.) |
-| POST | `/api/lessons/:dayNumber/complete` | Mark lesson as complete with score |
-| POST | `/api/lessons/:dayNumber/save` | Auto-save partial quiz answers |
-
----
-
-## 📂 Project Structure
+## 📂 Directory Structure
 
 ```
-.
-├── backend/                # Express API Server
-│   ├── config/            # Database configuration
-│   ├── controllers/       # Route logic (Auth, Lessons)
-│   ├── middleware/        # Auth protection, Error handling
-│   ├── routes/            # API endpoints
-│   └── server.js          # Entry point
-│
-├── project/                # React Vite Frontend
-│   ├── database/          # SQL Schemas & Migration scripts
+project-root/
+├── backend/                 # Node.js API
+│   ├── app.js
+│   ├── controllers/         # Logic for Lessons, Auth
+│   └── routes/              # API Endpoints
+├── project/                 # React Frontend
 │   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── context/       # Global State (Auth, Progress)
-│   │   ├── lib/           # API Client & Helpers
-│   │   ├── pages/         # Human-facing pages (LessonView, Dashboard)
-│   │   └── main.jsx       # Entry point
-│   └── vite.config.js     # Vite Configuration
-│
-└── package.json           # Root scripts (Deployment focus)
+│   │   ├── components/      # Reusable UI (Navbar, Cards)
+│   │   ├── pages/           # Dashboard, LessonView, Play
+│   │   └── hooks/           # Custom Hooks (useSmartLessons)
+│   └── database/            # SQL Migrations
+└── README.md                # This file
 ```
-
----
-
-## 🔮 Future Roadmap
-
-We are consistently pushing the boundaries of EdTech. Here is what is coming next:
-
-### 🤖 1. Specialized AI Chat (The Personal Tutor)
-- **Context-Aware Assistance**: An intelligent chat interface that knows your current level.
-- **Level Adaptation**: Adjusts vocabulary and grammar complexity to match your proficiency.
-
-### 🎙️ 2. Interactive Voice Chat (Fluency Practice)
-- **Natural Conversation**: Voice-activated AI companion.
-- **Pronunciation Coaching**: Real-time analysis of your speech.
-
-### � 3. Dynamic Full-Scale AI Assessment
-- **One-Hour Comprehensive Exam**: A rigorous, structured test designed to evaluate all language skills.
-- **Fully AI-Supported**: Generated and graded by AI to ensure objectiveness.
 
 ---
 
 <p align="center">
-  <sub>Built with ❤️ for English Learners everywhere.</sub>
+  Built with ❤️ for learners everywhere.
 </p>

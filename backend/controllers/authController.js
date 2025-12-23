@@ -7,7 +7,7 @@ import { sendTokenResponse } from '../middleware/auth.js';
 // @access  Public
 export const register = async (req, res) => {
     try {
-        const { email, password, full_name } = req.body;
+        const { email, password, full_name, terms_accepted } = req.body;
         const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
         // Validation
@@ -50,10 +50,10 @@ export const register = async (req, res) => {
 
         // Create user
         const result = await query(
-            `INSERT INTO users (email, password_hash, full_name, password_changed) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING id, email, full_name, password_changed, created_at`,
-            [email, password_hash, full_name || 'New User', true]
+            `INSERT INTO users (email, password_hash, full_name, password_changed, terms_accepted, terms_accepted_at) 
+       VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 = true THEN NOW() ELSE NULL END) 
+       RETURNING id, email, full_name, password_changed, terms_accepted, created_at`,
+            [email, password_hash, full_name || 'New User', true, terms_accepted || false]
         );
 
         const user = result.rows[0];

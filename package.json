@@ -3,9 +3,9 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "prebuild": "cd backend && npm install",
-        "build": "echo 'Backend ready'",
-        "start": "cd backend && npm start"
+        "install:all": "cd backend && npm install && cd ../project && npm install",
+        "build": "cd backend && npm install && cd ../project && npm install && npm run build",
+        "start": "cd backend && node server.js"
     },
     "engines": {
         "node": "18.x"

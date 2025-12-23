@@ -31,6 +31,7 @@ const TermsAndConditionsModal = ({ onAccept }) => {
                 <div
                     className="flex-1 overflow-y-auto p-8 space-y-6 text-gray-600 dark:text-gray-300 text-sm leading-relaxed scrollbar-thin scrollbar-thumb-purple-200 dark:scrollbar-thumb-purple-900"
                     onScroll={handleScroll}
+                    dir="ltr"
                 >
                     <div className="prose dark:prose-invert max-w-none">
                         <h3>Terms and Conditions</h3>

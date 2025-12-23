@@ -5,22 +5,32 @@ import { lessonAPI } from '../lib/api'
 import { Play, BookOpen, CheckCircle, ArrowRight, Clock, Target, Award, XCircle, AlertCircle, BookOpenText, Image as ImageIcon, Volume2, Square } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import confetti from 'canvas-confetti'
+import { useLesson } from '../hooks/useLesson'
+import { useSmartLessons } from '../hooks/useSmartLessons'
 
 const LessonView = () => {
   const { dayId } = useParams()
   const navigate = useNavigate()
   const { learningPath, refreshProfile, user } = useApp()
   const [activeTab, setActiveTab] = useState('video')
-  const [apiLessonData, setApiLessonData] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [isReading, setIsReading] = useState(false) // State for reading text status
+  const [isReading, setIsReading] = useState(false)
+
+  const {
+    data: apiLessonData,
+    isLoading,
+    error,
+    completeLesson,
+    saveProgress,
+  } = useLesson(dayId);
+
+  // Smart Prefetching: Automatically caches current + next 2 lessons
+  useSmartLessons(parseInt(dayId));
 
   const speakWord = (text) => {
-    window.speechSynthesis.cancel(); // Stop any previous speech
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
-    utterance.rate = 0.8; // Slightly slower for clarity
+    utterance.rate = 0.8;
     window.speechSynthesis.speak(utterance);
   };
 
@@ -57,11 +67,10 @@ const LessonView = () => {
   }, [activeTab]);
 
   // Quiz State
-  const [userAnswers, setUserAnswers] = useState({}) // { exerciseId: selectedOption }
+  const [userAnswers, setUserAnswers] = useState({})
   const [quizSubmitted, setQuizSubmitted] = useState(false)
   const [score, setScore] = useState(0)
-  const [showFeedback, setShowFeedback] = useState(null) // 'success' or 'error'
-
+  const [showFeedback, setShowFeedback] = useState(null)
   const [completedSections, setCompletedSections] = useState({
     video: false,
     vocabulary: false,
@@ -75,18 +84,15 @@ const LessonView = () => {
   const getVideoEmbedUrl = (url) => {
     if (!url) return null;
 
-    // YouTube Short URL (youtu.be/ID)
     if (url.includes('youtu.be/')) {
       const id = url.split('youtu.be/')[1].split('?')[0];
       return `https://www.youtube.com/embed/${id}`;
     }
 
-    // YouTube Standard URL (youtube.com/watch?v=ID)
     if (url.includes('youtube.com/watch?v=')) {
       return url.replace('watch?v=', 'embed/');
     }
 
-    // Google Drive URL
     if (url.includes('drive.google.com')) {
       return url.replace('/view', '/preview');
     }
@@ -108,14 +114,11 @@ const LessonView = () => {
     return typeof ex.options === 'string' ? JSON.parse(ex.options) : ex.options;
   };
 
-  // Helper to detect if exercise is multiple choice (check options first, then type)
   const isMultipleChoice = (ex) => {
     const options = getOptions(ex);
-    // If options exist and have values, it's multiple choice
     if (options && Array.isArray(options) && options.length > 0) {
       return true;
     }
-    // Fallback to type check
     return ex.type === 'multiple-choice';
   };
 
@@ -124,42 +127,33 @@ const LessonView = () => {
 
     const correctAnswer = ex.correctAnswer !== undefined ? ex.correctAnswer : ex.correct_answer;
 
-    // Multiple Choice: compare the selected option text with correct answer
     if (isMultipleChoice(ex)) {
       const options = getOptions(ex);
       if (!options || !Array.isArray(options)) return false;
 
-      // Normalize both for comparison
       const normalizedUser = String(userAnswer).trim().toLowerCase();
       const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
 
-      // Direct string comparison - the answer is the text, not an index
       return normalizedUser === normalizedCorrect;
     }
 
-    // Fill-blank & Translate: correctAnswer is a string - text comparison
     const normalizedUser = String(userAnswer).trim().toLowerCase();
     const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
     return normalizedUser === normalizedCorrect;
   };
 
-
-
-  // Helper to get exercise type (detect from options if type is missing)
   const getExerciseType = (ex) => {
     if (ex.type) return ex.type;
     const options = getOptions(ex);
     if (options && Array.isArray(options) && options.length > 0) {
       return 'multiple-choice';
     }
-    // Check question content to guess type
     const q = (ex.question || '').toLowerCase();
     if (q.includes('ترجم') || q.includes('translate')) return 'translate';
     if (q.includes('complete') || q.includes('أكمل') || q.includes('___')) return 'fill-blank';
-    return 'fill-blank'; // default
+    return 'fill-blank';
   };
 
-  // Helper to get question type label in Arabic
   const getQuestionTypeLabel = (ex) => {
     const type = getExerciseType(ex);
     switch (type) {
@@ -170,7 +164,6 @@ const LessonView = () => {
     }
   };
 
-  // Helper to get placeholder text based on question type
   const getPlaceholder = (ex) => {
     const type = getExerciseType(ex);
     switch (type) {
@@ -197,85 +190,55 @@ const LessonView = () => {
     }
     : (localLesson ? { ...localLesson, source: 'local' } : null);
 
-  // Prepare Vocab List (Handles both DB and Local structures)
-  const displayVocab = lesson?.vocabularyData
-    ? [
-      { word: lesson.vocabularyData.word, translation: lesson.vocabularyData.translation, example: lesson.vocabularyData.example },
-      { word: lesson.vocabularyData.word1, translation: lesson.vocabularyData.translation1, example: lesson.vocabularyData.example1 },
-      { word: lesson.vocabularyData.word2, translation: lesson.vocabularyData.translation2, example: lesson.vocabularyData.example2 },
-      { word: lesson.vocabularyData.word3, translation: lesson.vocabularyData.translation3, example: lesson.vocabularyData.example3 },
-      { word: lesson.vocabularyData.word4, translation: lesson.vocabularyData.translation4, example: lesson.vocabularyData.example4 },
-      { word: lesson.vocabularyData.word5, translation: lesson.vocabularyData.translation5, example: lesson.vocabularyData.example5 },
-      { word: lesson.vocabularyData.word6, translation: lesson.vocabularyData.translation6, example: lesson.vocabularyData.example6 },
-      { word: lesson.vocabularyData.word7, translation: lesson.vocabularyData.translation7, example: lesson.vocabularyData.example7 },
-      { word: lesson.vocabularyData.word8, translation: lesson.vocabularyData.translation8, example: lesson.vocabularyData.example8 },
-      { word: lesson.vocabularyData.word9, translation: lesson.vocabularyData.translation9, example: lesson.vocabularyData.example9 },
-    ].filter(v => v.word)
-    : (lesson?.vocabulary || []);
+  // Prepare Vocab List - API returns vocabulary as array
+  const displayVocab = lesson?.vocabulary || [];
 
   // Helper for localStorage key
   const getStorageKey = () => user ? `lesson_progress_${user.id}_${dayId}` : null;
 
+  // Effect to load initial answers (progress) from the fetched data
   useEffect(() => {
-    const fetchLessonData = async () => {
-      try {
-        const { data } = await lessonAPI.getLesson(dayId);
-        setApiLessonData(data);
+    if (apiLessonData) {
+      let initialAnswers = {};
 
-        let initialAnswers = {};
+      if (apiLessonData.userProgress?.completed) {
+        setCompletedSections({
+          video: true,
+          vocabulary: true,
+          grammar: true,
+          reading: true,
+          exercises: true,
+          summary: true
+        });
+        setQuizSubmitted(true);
+        if (apiLessonData.userProgress?.score !== undefined) {
+          setScore(apiLessonData.userProgress.score);
+        }
+      } else {
+        // Load saved answers
+        if (apiLessonData.userProgress?.saved_answers) {
+          initialAnswers = { ...apiLessonData.userProgress.saved_answers };
+        }
 
-        // Check if lesson is already completed first
-        if (data.userProgress?.completed) {
-          // Lesson completed - show results state but DON'T load old answers
-          setCompletedSections({
-            video: true,
-            vocabulary: true,
-            grammar: true,
-            reading: true,
-            exercises: true
-          });
-          setQuizSubmitted(true);
-          if (data.userProgress?.score !== undefined) {
-            setScore(data.userProgress.score);
-          }
-          // Keep initialAnswers empty - user can retake fresh
-        } else {
-          // Lesson NOT completed - load saved progress to continue
-
-          // 1. Load from DB
-          if (data.userProgress?.saved_answers) {
-            initialAnswers = { ...data.userProgress.saved_answers };
-          }
-
-          // 2. Load from LocalStorage (backup)
-          const storageKey = getStorageKey();
-          if (storageKey) {
-            const savedLocal = localStorage.getItem(storageKey);
-            if (savedLocal) {
-              try {
-                const parsed = JSON.parse(savedLocal);
-                initialAnswers = { ...initialAnswers, ...parsed };
-              } catch (e) {
-                console.error("Failed to parse local storage", e);
-              }
+        // Load from LocalStorage (backup)
+        const storageKey = user ? `lesson_progress_${user.id}_${dayId}` : null;
+        if (storageKey) {
+          const savedLocal = localStorage.getItem(storageKey);
+          if (savedLocal) {
+            try {
+              const parsed = JSON.parse(savedLocal);
+              initialAnswers = { ...initialAnswers, ...parsed };
+            } catch (e) {
+              console.error("Failed to parse local storage", e);
             }
           }
         }
-
-        setUserAnswers(initialAnswers);
-      } catch (error) {
-        console.error("Error fetching lesson:", error);
-        setError(error.message || "Failed to load from database");
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    // Only fetch if has user (to generate storage key correctly)
-    if (user) {
-      fetchLessonData();
+      setUserAnswers(initialAnswers);
     }
-  }, [dayId, user]); // Add user dependency
+  }, [apiLessonData, dayId, user]);
+
+
 
   // Loading State
   if (isLoading) {
@@ -361,7 +324,8 @@ const LessonView = () => {
 
     // 3. Auto-save to backend
     try {
-      await lessonAPI.saveProgress(dayId, newAnswers);
+      // Use the Mutation from the hook
+      saveProgress(newAnswers);
     } catch (error) {
       console.error("Autosave failed:", error);
     }
@@ -403,7 +367,9 @@ const LessonView = () => {
 
   const handleCompleteLesson = async () => {
     try {
-      await lessonAPI.completeLesson(lesson.day, score, 30);
+      await completeLesson({ score, timeSpent: 30 });
+      // Note: refreshProfile is largely redundant if the mutation handles invalidation, 
+      // but we'll keep it as a safety or if it handles other context updates.
       await refreshProfile();
       navigate('/roadmap');
     } catch (error) {
@@ -419,7 +385,7 @@ const LessonView = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-purple-900 dark:to-gray-900 p-4 md:p-6 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-purple-900 dark:to-gray-900 p-2 xs:p-3 sm:p-4 md:p-6 overflow-x-hidden">
 
       <AnimatePresence>
         {showFeedback && (
@@ -452,7 +418,7 @@ const LessonView = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden"
+          className="glass rounded-2xl xs:rounded-3xl p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 mb-4 xs:mb-6 sm:mb-8 relative overflow-hidden"
         >
           <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
             <Award className="w-64 h-64 text-purple-500" />
@@ -471,41 +437,41 @@ const LessonView = () => {
               <div className="inline-block px-4 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium mb-3">
                 {lesson.levelName}
               </div>
-              <h1 className="text-2xl md:text-4xl font-bold text-gray-800 dark:text-white mb-2">
+              <h1 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-2">
                 {lesson.title}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-2xl text-sm md:text-base">
+              <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-2xl text-xs xs:text-sm sm:text-base">
                 {lesson.description}
               </p>
             </div>
-            <div className="flex gap-4 text-center w-full md:w-auto">
-              <div className="bg-white/50 dark:bg-black/20 p-3 md:p-4 rounded-xl backdrop-blur-sm flex-1 md:flex-none">
-                <p className="text-xs text-gray-500">النقاط</p>
-                <p className="text-xl md:text-2xl font-bold text-purple-600">85+</p>
+            <div className="flex gap-2 xs:gap-3 sm:gap-4 text-center w-full md:w-auto">
+              <div className="bg-white/50 dark:bg-black/20 p-2 xs:p-3 md:p-4 rounded-lg xs:rounded-xl backdrop-blur-sm flex-1 md:flex-none">
+                <p className="text-[10px] xs:text-xs text-gray-500">النقاط</p>
+                <p className="text-base xs:text-xl md:text-2xl font-bold text-purple-600">85+</p>
               </div>
-              <div className="bg-white/50 dark:bg-black/20 p-3 md:p-4 rounded-xl backdrop-blur-sm flex-1 md:flex-none">
-                <p className="text-xs text-gray-500">الوقت</p>
-                <p className="text-xl md:text-2xl font-bold text-blue-600">{lesson.estimatedTime}</p>
+              <div className="bg-white/50 dark:bg-black/20 p-2 xs:p-3 md:p-4 rounded-lg xs:rounded-xl backdrop-blur-sm flex-1 md:flex-none">
+                <p className="text-[10px] xs:text-xs text-gray-500">الوقت</p>
+                <p className="text-base xs:text-xl md:text-2xl font-bold text-blue-600">{lesson.estimatedTime}</p>
               </div>
             </div>
           </div>
         </motion.div>
 
-        <div className="glass rounded-3xl p-2 md:p-4 mb-6 sticky top-4 z-30 shadow-lg backdrop-blur-xl bg-white/80 dark:bg-gray-800/80">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="glass rounded-2xl xs:rounded-3xl p-1.5 xs:p-2 md:p-4 mb-4 xs:mb-5 sm:mb-6 sticky top-2 xs:top-3 sm:top-4 z-30 shadow-lg backdrop-blur-xl bg-white/80 dark:bg-gray-800/80">
+          <div className="flex gap-1 xs:gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide px-0.5">
             {tabs.map((tab) => (
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-xl font-medium whitespace-nowrap transition-all flex-shrink-0 ${activeTab === tab.id
+                className={`flex items-center gap-1.5 xs:gap-2 px-2.5 xs:px-3 sm:px-4 md:px-6 py-2 xs:py-2.5 sm:py-3 rounded-lg xs:rounded-xl font-medium whitespace-nowrap transition-all flex-shrink-0 text-xs xs:text-sm ${activeTab === tab.id
                   ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <tab.icon className="w-5 h-5" />
-                {tab.label}
+                <tab.icon className="w-4 h-4 xs:w-5 xs:h-5" />
+                <span className="hidden xs:inline">{tab.label}</span>
                 {completedSections[tab.id] && <CheckCircle className="w-4 h-4 text-green-400 bg-white rounded-full" />}
               </motion.button>
             ))}
@@ -517,11 +483,11 @@ const LessonView = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          className="glass rounded-3xl p-4 md:p-8 min-h-[400px]"
+          className="glass rounded-2xl xs:rounded-3xl p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 min-h-[400px]"
         >
           {activeTab === 'video' && (
             <div className="text-center">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white mb-6">
+              <h2 className="text-lg xs:text-xl md:text-2xl font-bold text-gray-800 dark:text-white mb-4 xs:mb-5 sm:mb-6">
                 شاهد وتعلم
               </h2>
               <div className="aspect-video bg-gray-900 rounded-2xl mb-6 flex items-center justify-center relative group shadow-2xl overflow-hidden">
@@ -558,12 +524,12 @@ const LessonView = () => {
           {activeTab === 'vocabulary' && (
             <div>
               {/* Vocabulary Grid */}
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">الكلمات الجديدة</h2>
+              <div className="flex justify-between items-center mb-4 xs:mb-5 sm:mb-6">
+                <h2 className="text-lg xs:text-xl md:text-2xl font-bold text-gray-800 dark:text-white">الكلمات الجديدة</h2>
                 <span className="text-xs md:text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full">{displayVocab.length} كلمات</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 xs:gap-4 mb-6 xs:mb-7 sm:mb-8">
                 {displayVocab.length === 0 && (
                   <div className="col-span-full text-center text-gray-500 py-8">
                     لا توجد كلمات متاحة لهذا الدرس
@@ -575,13 +541,13 @@ const LessonView = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="bg-white dark:bg-gray-800 p-6 rounded-2xl hover:shadow-lg transition-shadow border border-gray-100 dark:border-gray-700"
+                    className="bg-white dark:bg-gray-800 p-3 xs:p-4 sm:p-5 md:p-6 rounded-xl xs:rounded-2xl hover:shadow-lg transition-shadow border border-gray-100 dark:border-gray-700"
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <div className="text-xl md:text-2xl font-bold text-purple-600" dir="ltr">{vocab.word}</div>
-                      <button onClick={() => speakWord(vocab.word)} className="text-gray-400 hover:text-purple-500"><Play size={16} /></button>
+                      <div className="text-lg xs:text-xl md:text-2xl font-bold text-purple-600" dir="ltr">{vocab.word}</div>
+                      <button onClick={() => speakWord(vocab.word)} className="text-gray-400 hover:text-purple-500"><Play size={14} className="xs:w-4 xs:h-4" /></button>
                     </div>
-                    <div className="text-lg md:text-xl text-gray-800 dark:text-white mb-2 font-medium">
+                    <div className="text-base xs:text-lg md:text-xl text-gray-800 dark:text-white mb-2 font-medium">
                       {vocab.translation}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400 italic bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg" dir="ltr">
@@ -604,10 +570,10 @@ const LessonView = () => {
 
           {activeTab === 'grammar' && (
             <div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white mb-6">
+              <h2 className="text-lg xs:text-xl md:text-2xl font-bold text-gray-800 dark:text-white mb-4 xs:mb-5 sm:mb-6">
                 شرح القواعد{lesson.grammar?.topic ? `: ${lesson.grammar.topic}` : ''}
               </h2>
-              <div className="prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl mb-8 border border-gray-100 dark:border-gray-700">
+              <div className="prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 rounded-xl xs:rounded-2xl mb-6 xs:mb-7 sm:mb-8 border border-gray-100 dark:border-gray-700">
                 {(() => {
                   const docUrl = lesson.documentContent;
 
@@ -686,7 +652,7 @@ const LessonView = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">
+                  <h2 className="text-lg xs:text-xl md:text-2xl font-bold text-gray-800 dark:text-white">
                     النص القرائي
                   </h2>
                   <button
@@ -757,7 +723,7 @@ const LessonView = () => {
           {activeTab === 'exercises' && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">
+                <h2 className="text-lg xs:text-xl md:text-2xl font-bold text-gray-800 dark:text-white">
                   {quizSubmitted ? `نتيجتك: ${score}%` : 'اختبر نفسك'}
                 </h2>
                 {!quizSubmitted && (

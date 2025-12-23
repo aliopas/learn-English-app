@@ -7,6 +7,14 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        'xs': '375px',   // للشاشات الصغيرة جداً (iPhone SE)
+        'sm': '640px',   // موبايل عادي
+        'md': '768px',   // تابلت عمودي
+        'lg': '1024px',  // تابلت أفقي / لابتوب صغير
+        'xl': '1280px',  // desktop
+        '2xl': '1536px', // شاشات كبيرة
+      },
       colors: {
         primary: {
           50: '#f0f9ff',
@@ -38,6 +46,11 @@ export default {
       },
       backdropBlur: {
         xs: '2px',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '128': '32rem',
       }
     },
   },

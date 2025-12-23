@@ -1,5 +1,89 @@
 import { query } from '../config/database.js';
 
+// @desc    Get batch of lessons by day numbers
+// @route   POST /api/lessons/batch
+// @access  Private
+export const getLessonsBatch = async (req, res) => {
+    try {
+        const { days } = req.body;
+
+        if (!days || !Array.isArray(days) || days.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or empty days array'
+            });
+        }
+
+        // 1. Get Lessons Details from DB
+        // Use ANY to match any of the day numbers
+        const lessonsResult = await query(
+            'SELECT * FROM lessons WHERE day_number = ANY($1::int[]) ORDER BY day_number ASC',
+            [days]
+        );
+
+        // 2. Get User Progress for these days
+        const progressResult = await query(
+            'SELECT * FROM lesson_progress WHERE user_id = $1 AND day_number = ANY($2::int[])',
+            [req.user.id, days]
+        );
+
+        // Map progress by day_number for easier lookup
+        const progressMap = {};
+        progressResult.rows.forEach(p => {
+            progressMap[p.day_number] = p;
+        });
+
+        // 3. Map Results
+        const lessons = lessonsResult.rows.map(lesson => {
+            const dayNumber = lesson.day_number;
+            const progress = progressMap[dayNumber] || {
+                completed: false,
+                score: 0,
+                exercises_completed: false
+            };
+
+            return {
+                id: lesson.id,
+                day: lesson.day_number,
+                level: lesson.level || 'A1',
+                levelName: lesson.level || 'A1',
+                title: lesson.title || `Day ${dayNumber}`,
+                description: lesson.description,
+                videoUrl: lesson.video_url,
+                imageUrl: lesson.image_url,
+                estimatedTime: '30 دقيقة',
+                documentContent: lesson.grammar_content,
+                grammar: {
+                    topic: lesson.grammar_topic,
+                    description: lesson.grammar_content
+                },
+                readingExercise: {
+                    text: lesson.reading_text
+                },
+                vocabulary: lesson.vocabulary_list || [],
+                exercises: (lesson.quiz_list || []).map(ex => ({
+                    ...ex,
+                    correctAnswer: ex.correct_answer || ex.answer
+                })),
+                flashcards: lesson.flashcards_list || [],
+                userProgress: progress
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            data: lessons
+        });
+
+    } catch (error) {
+        console.error('Get batch lessons error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error: ' + error.message
+        });
+    }
+};
+
 // @desc    Get lesson content by day number
 // @route   GET /api/lessons/:dayNumber
 // @access  Private
@@ -115,7 +199,45 @@ export const completeLesson = async (req, res) => {
             [userId, dayNumber, lessonId, score || 0, timeSpent || 0]
         );
 
-        // 3. Smart Update User Profile (Avoid > 30 check constraint error)
+        // 3. Calculate Streak
+        // Get user's current profile to check last activity
+        const profileResult = await query(
+            'SELECT streak_days, last_activity_date FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+
+        let newStreakDays = 1; // Default: first day or reset
+
+        if (profileResult.rows.length > 0) {
+            const { streak_days, last_activity_date } = profileResult.rows[0];
+
+            if (last_activity_date) {
+                const lastActivity = new Date(last_activity_date);
+                const today = new Date();
+
+                // Reset time to compare dates only (ignore hours/minutes)
+                lastActivity.setHours(0, 0, 0, 0);
+                today.setHours(0, 0, 0, 0);
+
+                const diffTime = today - lastActivity;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays === 0) {
+                    // Same day - keep current streak
+                    newStreakDays = streak_days || 1;
+                } else if (diffDays === 1) {
+                    // Consecutive day - increment streak
+                    newStreakDays = (streak_days || 0) + 1;
+                } else {
+                    // Missed days - reset streak to 1
+                    newStreakDays = 1;
+                }
+            }
+        }
+
+        console.log(`🔥 Streak updated: ${newStreakDays} days`);
+
+        // 4. Smart Update User Profile (Avoid > 30 check constraint error)
         // Rotate skill focus: 0=Listening, 1=Reading, 2=Speaking, 3=Grammar
         const skillIndex = (dayNumber - 1) % 4;
 
@@ -137,6 +259,8 @@ export const completeLesson = async (req, res) => {
          reading_score = LEAST(100, reading_score + $4),
          speaking_score = LEAST(100, speaking_score + $5),
          grammar_score = LEAST(100, grammar_score + $6),
+         streak_days = $8,
+         last_activity_date = CURRENT_DATE,
          updated_at = NOW()
        WHERE user_id = $7`,
             [
@@ -146,7 +270,8 @@ export const completeLesson = async (req, res) => {
                 readingInc,
                 speakingInc,
                 grammarInc,
-                userId
+                userId,
+                newStreakDays
             ]
         );
 
@@ -228,56 +353,84 @@ export const getGameVocabulary = async (req, res) => {
 
         const currentDay = profileResult.rows[0].current_day;
 
-        // 2. Fetch Vocabulary from lessons table (vocabulary_list JSONB)
-        const result = await query(
+        const allWords = [];
+        let idCounter = 1;
+        let foundDay = null;
+
+        // 2. Try current day first
+        let result = await query(
             'SELECT vocabulary_list FROM lessons WHERE day_number = $1',
             [currentDay]
         );
 
-        const allWords = [];
-        let idCounter = 1;
-
         if (result.rows.length > 0 && result.rows[0].vocabulary_list) {
             const vocabList = result.rows[0].vocabulary_list;
-            // Parse if it's string (pg might auto-parse jsonb, but safe to check)
             const vocabs = Array.isArray(vocabList) ? vocabList : [];
 
-            vocabs.forEach(v => {
-                if (v.word && v.translation) {
-                    allWords.push({
-                        id: idCounter++,
-                        english: v.word,
-                        arabic: v.translation,
-                        level: 'A1'
-                    });
-                }
-            });
-        } else {
-            // Fallback: Fetch from any random lesson that has vocab
-            console.log(`⚠️ No vocabulary found for Day ${currentDay}, fetching random fallback.`);
-            const fallbackResult = await query('SELECT vocabulary_list FROM lessons WHERE vocabulary_list IS NOT NULL LIMIT 1');
-            if (fallbackResult.rows.length > 0) {
-                const fallback = fallbackResult.rows[0].vocabulary_list;
-                if (Array.isArray(fallback)) {
-                    fallback.slice(0, 5).forEach(v => {
+            if (vocabs.length > 0) {
+                vocabs.forEach(v => {
+                    if (v.word && v.translation) {
                         allWords.push({
                             id: idCounter++,
                             english: v.word,
                             arabic: v.translation,
                             level: 'A1'
                         });
+                    }
+                });
+                foundDay = currentDay;
+            }
+        }
+
+        // 3. If not found, try previous day only
+        if (allWords.length === 0 && currentDay > 1) {
+            const prevDay = currentDay - 1;
+            result = await query(
+                'SELECT vocabulary_list FROM lessons WHERE day_number = $1',
+                [prevDay]
+            );
+
+            if (result.rows.length > 0 && result.rows[0].vocabulary_list) {
+                const vocabList = result.rows[0].vocabulary_list;
+                const vocabs = Array.isArray(vocabList) ? vocabList : [];
+
+                if (vocabs.length > 0) {
+                    vocabs.forEach(v => {
+                        if (v.word && v.translation) {
+                            allWords.push({
+                                id: idCounter++,
+                                english: v.word,
+                                arabic: v.translation,
+                                level: 'A1'
+                            });
+                        }
                     });
+                    foundDay = prevDay;
+                    console.log(`⚠️ Using vocabulary from previous day ${prevDay}`);
                 }
             }
+        }
+
+        // If no vocabulary found at all, return empty with message
+        if (allWords.length === 0) {
+            console.log(`⚠️ No vocabulary found for user (current day: ${currentDay})`);
+            return res.status(200).json({
+                success: true,
+                data: [],
+                day: currentDay,
+                message: 'No vocabulary available yet'
+            });
         }
 
         // Shuffle
         const shuffledWords = allWords.sort(() => Math.random() - 0.5);
 
+        console.log(`✅ Game vocabulary loaded from Day ${foundDay} (${allWords.length} words)`);
+
         res.status(200).json({
             success: true,
             data: shuffledWords,
-            day: currentDay
+            day: foundDay || currentDay
         });
 
     } catch (error) {
@@ -321,4 +474,3 @@ export const getAvailableLessons = async (req, res) => {
         });
     }
 };
-

@@ -38,8 +38,9 @@ const Auth = () => {
           </div>
 
           <h1 className="text-4xl font-bold text-white mb-2">
-            منصة إتقان الإنجليزية
+            نُطقي
           </h1>
+          <p className="text-lg text-purple-200 font-medium">Notqi</p>
 
           <div className="text-purple-100 flex items-center justify-center gap-2 mt-4">
             <Sparkles className="w-5 h-5" />
@@ -94,16 +95,6 @@ const Auth = () => {
             {loading ? 'جاري التحميل...' : 'تسجيل الدخول'}
           </button>
         </form>
-
-        <div className="mt-8 pt-8 border-t border-white/20 text-center">
-          <p className="text-purple-100/60 text-sm mb-4">ليس لديك حساب؟</p>
-          <Link
-            to="/register-direct-access-v1-k9p2"
-            className="text-white font-bold hover:underline"
-          >
-            إنشاء حساب جديد مجاناً
-          </Link>
-        </div>
       </div>
     </div>
   )

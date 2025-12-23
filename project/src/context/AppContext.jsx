@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { authAPI } from '../lib/api'
+import { useQueryClient } from '@tanstack/react-query'
+import { authAPI, lessonAPI } from '../lib/api'
 import { generateLearningPath } from '../data/learningData'
 
 const AppContext = createContext()
@@ -19,6 +20,23 @@ export const AppProvider = ({ children }) => {
   const [darkMode, setDarkMode] = useState(false)
   const [learningPath] = useState(generateLearningPath())
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false)
+
+  const queryClient = useQueryClient()
+
+  // Theme Initialization
+  useEffect(() => {
+    const localTheme = localStorage.getItem('theme')
+    if (localTheme) {
+      const isDark = localTheme === 'dark'
+      setDarkMode(isDark)
+      if (isDark) document.documentElement.classList.add('dark')
+    } else {
+      // Check system preference
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      setDarkMode(systemDark)
+      if (systemDark) document.documentElement.classList.add('dark')
+    }
+  }, [])
 
   useEffect(() => {
     checkUser()
@@ -48,6 +66,16 @@ export const AppProvider = ({ children }) => {
 
         // Check if user needs to change password
         setNeedsPasswordChange(!data.user.password_changed)
+
+        // 🚀 Prefetch all initial data in background (cache warming)
+        queryClient.prefetchQuery({
+          queryKey: ['initialAppData'],
+          queryFn: async () => {
+            const response = await lessonAPI.getBulkInitialData()
+            return response.data
+          },
+          staleTime: Infinity
+        })
       }
     } catch (error) {
       console.log('Not authenticated')
@@ -83,15 +111,16 @@ export const AppProvider = ({ children }) => {
     }
   }
 
-  const signUp = async (email, password, full_name) => {
+  const signUp = async (email, password, full_name, terms_accepted = false) => {
     try {
-      const data = await authAPI.register(email, password, full_name)
+      const data = await authAPI.register(email, password, full_name, terms_accepted)
       if (data.success && data.user) {
         if (data.token) localStorage.setItem('token', data.token)
         setUser({
           id: data.user.id,
           email: data.user.email,
-          full_name: data.user.full_name
+          full_name: data.user.full_name,
+          terms_accepted: data.user.terms_accepted
         })
 
         setNeedsPasswordChange(false) // They set their own password
@@ -171,8 +200,14 @@ export const AppProvider = ({ children }) => {
   }
 
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode)
-    document.documentElement.classList.toggle('dark')
+    const newMode = !darkMode
+    setDarkMode(newMode)
+    localStorage.setItem('theme', newMode ? 'dark' : 'light')
+    if (newMode) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
   }
 
   const value = {

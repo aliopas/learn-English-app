@@ -31,10 +31,10 @@ const apiClient = async (endpoint, options = {}) => {
 // Auth API
 export const authAPI = {
     // Register
-    register: async (email, password, full_name) => {
+    register: async (email, password, full_name, terms_accepted = false) => {
         return apiClient('/auth/register', {
             method: 'POST',
-            body: JSON.stringify({ email, password, full_name }),
+            body: JSON.stringify({ email, password, full_name, terms_accepted }),
         });
     },
 
@@ -86,9 +86,22 @@ export default apiClient;
 
 // Lesson API
 export const lessonAPI = {
+    // Get bulk initial data (all lessons metadata in one request)
+    getBulkInitialData: async () => {
+        return apiClient('/lessons/bulk/initial-data');
+    },
+
     // Get lesson content
     getLesson: async (dayNumber) => {
         return apiClient(`/lessons/${dayNumber}`);
+    },
+
+    // Get batch of lessons (Smart Caching)
+    getLessonsBatch: async (days) => {
+        return apiClient('/lessons/batch', {
+            method: 'POST',
+            body: JSON.stringify({ days })
+        });
     },
 
     // Get available lessons (days with content in database)

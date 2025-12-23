@@ -8,10 +8,17 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: 'Cairo', 'Tajawal', sans-serif;
-  direction: rtl;
-  text-align: right;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Cairo', 'Tajawal', sans-serif;
+    direction: rtl;
+    text-align: right;
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300;
+  }
 }
 
 @layer utilities {

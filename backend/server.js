@@ -2,6 +2,8 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import webhookRoutes from './routes/webhook.js';
 import lessonRoutes from './routes/lessons.js';
@@ -18,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 // Global Request Logger
 app.use((req, res, next) => {
     console.log(`🔔 [${new Date().toISOString()}] ${req.method} ${req.url}`);
-    console.log('Headers:', JSON.stringify(req.headers));
+    // console.log('Headers:', JSON.stringify(req.headers)); // Reduced noise
     next();
 });
 
@@ -45,17 +47,36 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// 404 handler
-app.use((req, res) => {
-    console.log(`⚠️ Route not found: ${req.method} ${req.originalUrl}`);
-    res.status(404).json({
-        success: false,
-        message: 'Route not found',
-        path: req.originalUrl // Return path to help debugging
-    });
-});
+// Serve STATIC FILES in Production
+// This is critical for Monolith deployments (e.g. Railway, Heroku)
+if (process.env.NODE_ENV === 'production') {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const frontendDist = path.join(__dirname, '../project/dist');
 
-// Error handler
+    console.log(`📂 Serving static files from: ${frontendDist}`);
+
+    app.use(express.static(frontendDist));
+
+    // Handle React routing, return all requests to React app
+    app.get('*', (req, res) => {
+        if (!req.url.startsWith('/api')) {
+            res.sendFile(path.resolve(frontendDist, 'index.html'));
+        } else {
+            res.status(404).json({ success: false, message: 'API Route not found' });
+        }
+    });
+} else {
+    // 404 handler for API-only mode (Dev)
+    app.use((req, res) => {
+        res.status(404).json({
+            success: false,
+            message: 'Route not found',
+            path: req.originalUrl
+        });
+    });
+}
+
+// Global Error handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({

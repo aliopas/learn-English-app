@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../context/AppContext'
+import { useQuery } from '@tanstack/react-query'
+import { lessonAPI } from '../lib/api'
+import { useLesson } from '../hooks/useLesson'
 import { Trophy, Star, ArrowRight, RotateCcw, Volume2, CheckCircle, XCircle } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
@@ -13,47 +16,23 @@ const VocabularyGame = () => {
     const [score, setScore] = useState(0)
     const [streak, setStreak] = useState(0)
     const [gameState, setGameState] = useState('playing') // playing, correct, incorrect, finished
-    const [words, setWords] = useState([])
-    const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const fetchWords = async () => {
-            try {
-                // Import apiClient dynamically to avoid top-level issues if any
-                const { default: apiClient } = await import('../lib/api')
-                const response = await apiClient('/lessons/vocabulary/game')
+    // Use useLesson to get data INSTANTLY from cache (hydrated by Dashboard)
+    const { data: lessonData, isLoading: loading } = useLesson(userProfile?.current_day)
 
-                if (response.success && response.data.length > 0) {
-                    setWords(response.data)
-                } else {
-                    console.warn('No vocabulary found, using fallback')
-                    setWords([
-                        { id: 1, arabic: 'كتاب', english: 'book', level: 'A1' },
-                        { id: 2, arabic: 'سعيد', english: 'happy', level: 'A1' }
-                    ])
-                }
-            } catch (error) {
-                console.error('Failed to fetch vocabulary:', error)
-                // Fallback on error
-                setWords([
-                    { id: 1, arabic: 'مثال', english: 'example', level: 'A1' },
-                    { id: 2, arabic: 'خطأ في الاتصال', english: 'connection error', level: 'A1' }
-                ])
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        fetchWords()
-    }, [])
-
-
+    // Extract words from the lesson data
+    const words = lessonData?.vocabulary?.map((v, i) => ({
+        id: i + 1,
+        arabic: v.translation,
+        english: v.word,
+        level: lessonData.level || 'A1'
+    })) || []
 
     // If loading or no words after loading
-    if (loading) {
+    if (loading || !userProfile) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-indigo-900">
-                <div className="text-purple-600 animate-pulse text-xl font-bold">جاري تحميل الكلمات...</div>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
             </div>
         )
     }

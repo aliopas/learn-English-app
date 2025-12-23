@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { BookOpen, Mail, Lock, User, Sparkles, AlertCircle } from 'lucide-react'
+import TermsAndConditionsModal from '../components/TermsAndConditionsModal'
 
 const Register = () => {
     const [email, setEmail] = useState('')
@@ -9,6 +10,8 @@ const Register = () => {
     const [fullName, setFullName] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [showTerms, setShowTerms] = useState(false)
+    const [termsAccepted, setTermsAccepted] = useState(false)
     const { signUp } = useApp()
 
     const handleSubmit = async (e) => {
@@ -17,7 +20,7 @@ const Register = () => {
         setLoading(true)
 
         try {
-            await signUp(email, password, fullName)
+            await signUp(email, password, fullName, true) // termsAccepted is guaranteed true by required checkbox/form validation
         } catch (err) {
             setError(err.message || 'حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى.')
         } finally {
@@ -26,7 +29,7 @@ const Register = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 flex items-center justify-center p-6">
+        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 flex items-center justify-center p-6 relative">
             <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute top-20 right-20 w-96 h-96 bg-purple-400 rounded-full blur-3xl opacity-20 animate-pulse" />
                 <div className="absolute bottom-20 left-20 w-96 h-96 bg-pink-400 rounded-full blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }} />
@@ -103,6 +106,28 @@ const Register = () => {
                         </div>
                     </div>
 
+                    {/* Terms and Conditions */}
+                    <div className="flex items-start gap-3 p-4 bg-white/5 border border-white/20 rounded-xl">
+                        <input
+                            type="checkbox"
+                            id="terms"
+                            required
+                            checked={termsAccepted}
+                            onChange={(e) => setTermsAccepted(e.target.checked)}
+                            className="mt-1 w-5 h-5 rounded border-white/30 bg-white/10 checked:bg-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                        />
+                        <label htmlFor="terms" className="text-white/90 text-sm leading-relaxed cursor-pointer select-none">
+                            أوافق على{' '}
+                            <button
+                                type="button"
+                                onClick={() => setShowTerms(true)}
+                                className="text-white underline hover:text-purple-200 font-semibold"
+                            >
+                                الشروط والأحكام و سياسة الخصوصية
+                            </button>
+                        </label>
+                    </div>
+
                     <button
                         type="submit"
                         disabled={loading}
@@ -122,6 +147,14 @@ const Register = () => {
                     </Link>
                 </div>
             </div>
+
+            {/* Terms Modal */}
+            {showTerms && (
+                <TermsAndConditionsModal onAccept={() => {
+                    setTermsAccepted(true)
+                    setShowTerms(false)
+                }} />
+            )}
         </div>
     )
 }

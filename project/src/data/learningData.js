@@ -1,13 +1,49 @@
 // ============================================
-// منهج تعليم الإنجليزية الكامل - 30 يوم
-// مبني على معايير CEFR العالمية
+// منهج تعليم الإنجليزية الكامل - 120 يوم
+// كل مستوى = 30 يوم | مبني على معايير CEFR العالمية
 // ============================================
 
+// Helper function to generate array of days for a level
+const generateDays = (start, count) => {
+  return Array.from({ length: count }, (_, i) => start + i)
+}
+
 export const LEVELS = {
-  A1: { name: 'A1 - المبتدئ', days: [1, 2, 3, 4, 5, 6, 7], color: '#10b981' },
-  A2: { name: 'A2 - الأساسي', days: [8, 9, 10, 11, 12, 13, 14], color: '#3b82f6' },
-  B1: { name: 'B1 - المتوسط', days: [15, 16, 17, 18, 19, 20, 21, 22], color: '#8b5cf6' },
-  B2: { name: 'B2 - المتقدم', days: [23, 24, 25, 26, 27, 28, 29, 30], color: '#ec4899' }
+  A1: {
+    name: 'A1 - المبتدئ',
+    days: generateDays(1, 30),      // Days 1-30
+    dayRange: { start: 1, end: 30 },
+    color: '#10b981',
+    description: 'أساسيات اللغة للمبتدئين'
+  },
+  A2: {
+    name: 'A2 - الأساسي',
+    days: generateDays(31, 30),     // Days 31-60
+    dayRange: { start: 31, end: 60 },
+    color: '#3b82f6',
+    description: 'تطوير المهارات الأساسية'
+  },
+  B1: {
+    name: 'B1 - المتوسط',
+    days: generateDays(61, 30),     // Days 61-90
+    dayRange: { start: 61, end: 90 },
+    color: '#8b5cf6',
+    description: 'التعبير بوضوح والمشاركة في نقاشات'
+  },
+  B2: {
+    name: 'B2 - المتقدم',
+    days: generateDays(91, 30),     // Days 91-120
+    dayRange: { start: 91, end: 120 },
+    color: '#ec4899',
+    description: 'إتقان اللغة والمواضيع المعقدة'
+  }
+}
+
+// Total course duration
+export const COURSE_INFO = {
+  totalDays: 120,
+  totalLevels: 4,
+  daysPerLevel: 30
 }
 
 // ============================================
