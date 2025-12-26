@@ -164,7 +164,7 @@ const Roadmap = () => {
               <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-amber-600 mb-1">{comingSoonCount}</div>
               <div className="text-[10px] xs:text-xs sm:text-sm text-amber-700 dark:text-amber-400 flex items-center justify-center gap-0.5 xs:gap-1">
                 <Clock className="w-3 h-3 xs:w-4 xs:h-4" />
-                قيد التطوير
+                قريباً
               </div>
             </div>
           </div>
